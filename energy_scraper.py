@@ -4,6 +4,8 @@ import urllib3
 from datetime import date
 from io import StringIO
 import providers
+from datetime import datetime
+
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -63,6 +65,7 @@ def get_min_offer(params):
 file = "elec_gas_data.csv"
 
 today = date.today()
+formatted_time = datetime.now().strftime("%H:%M:%S")
 
 data_list = []
 
@@ -80,7 +83,8 @@ for key in providers.elec:
                 "ElecOrGas": 'elec', 
                 'TerritoryId': key, 
                 'Rate':price, 
-                'Supplier':supplier}
+                'Supplier':supplier,
+                'Time':formatted_time}
     data_list.append(new_data)
     
 
@@ -97,7 +101,8 @@ for key in providers.gas:
                 "ElecOrGas": 'gas', 
                 'TerritoryId': key, 
                 'Rate':price, 
-                'Supplier':supplier}
+                'Supplier':supplier,
+                'Time':formatted_time}
     data_list.append(new_data)
 
 
