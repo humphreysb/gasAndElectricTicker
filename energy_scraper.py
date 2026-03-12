@@ -2,9 +2,8 @@ import requests
 import pandas as pd
 import urllib3
 from datetime import date
-import csv
-import os
 from io import StringIO
+import providers
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -59,17 +58,7 @@ def get_min_offer(params):
 
 
 
-elecProviders = {9:'AES Power',
-    2:'AEP',
-    4:'Duke',
-    7:'Ohio Edison',
-    6:'Ilumminating Co',
-    3:'Toledo Edison'}
 
-gasProviders = {1:'Enbridge-Dominion',
-                11:'Centerpoint',
-                10:'Duke',
-                8:'Columbia'}
 
 file = "elec_gas_data.csv"
 
@@ -78,7 +67,7 @@ today = date.today()
 data_list = []
 
 
-for key in elecProviders:
+for key in providers.elec:
     params = {
     "Category": "Electric",
     "TerritoryId": key,
@@ -95,7 +84,7 @@ for key in elecProviders:
     data_list.append(new_data)
     
 
-for key in gasProviders:
+for key in providers.gas:
     params = {
     "Category": "Gas",
     "TerritoryId": key,
