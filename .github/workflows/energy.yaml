@@ -1,50 +1,42 @@
 name: Ohio Energy Tracker
 
-
 on:
-  workflow_dispatch: # Allows manual triggering
   push:
     branches: [main]
-
-on:
-schedule:
-- cron: "0 13 * * *"
-workflow_dispatch:
+  workflow_dispatch: # Allows manual triggering
+  schedule:
+    - cron: "0 13 * * *" # Runs daily at 13:00 UTC
 
 permissions:
-contents: write
+  contents: write
 
 jobs:
+  run-tracker:
+    runs-on: ubuntu-latest
 
-run-tracker:
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-```
-runs-on: ubuntu-latest
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
 
-steps:
+      - name: Install packages
+        run: |
+          pip install pandas requests plotly lxml html5lib
 
-  - uses: actions/checkout@v4
+      - name: Run scraper
+        run: python energy_scraper.py
 
-  - name: Setup Python
-    uses: actions/setup-python@v5
-    with:
-      python-version: "3.11"
+      - name: Build dashboard
+        run: python build_dashboard.py
 
-  - name: Install packages
-    run: |
-      pip install pandas requests plotly lxml html5lib
-
-  - name: Run scraper
-    run: python energy_scraper.py
-
-  - name: Build dashboard
-    run: python build_dashboard.py
-
-  - name: Commit updates
-    run: |
-      git config --global user.name "github-actions"
-      git config --global user.email "github-actions@github.com"
-      git add elec_gas_data.csv index.html
-      git commit -m "Daily energy update" || echo "No changes"
-      git push
-```
+      - name: Commit updates
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git add elec_gas_data.csv index.html
+          git commit -m "Daily energy update" || echo "No changes"
+          git push
