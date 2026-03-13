@@ -5,6 +5,7 @@ from datetime import date
 from io import StringIO
 import providers
 from datetime import datetime
+import os
 
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -25,7 +26,9 @@ def get_min_offer(params):
 
     html_wrapped = StringIO(response.text)
     tables = pd.read_html(html_wrapped)
-    df = tables[0]
+    dfAll = tables[0]
+
+    df = dfAll.copy(deep=True)
 
     df.columns = df.columns.str.strip()
 
@@ -56,11 +59,16 @@ def get_min_offer(params):
 
     row = df.loc[df[key].idxmin()]
 
-    return row["Supplier"], row[key]
+    return row["Supplier"], row[key], dfAll
 
 
-
-
+# Load Pickle File
+allFile = 'allData.pkl'
+if not os.path.exists(allFile):
+    firstPull = True
+else:
+    firstPull = False
+    dfAll = pd.read_pickle(allFile)
 
 file = "elec_gas_data.csv"
 
@@ -77,7 +85,7 @@ for key in providers.elec:
     "RateCode": 1
     }
 
-    supplier, price = get_min_offer(params)
+    supplier, price, dfProv = get_min_offer(params)
 
     new_data = {"Date": today, 
                 "ElecOrGas": 'elec', 
@@ -86,6 +94,12 @@ for key in providers.elec:
                 'Supplier':supplier,
                 'Time':formatted_time}
     data_list.append(new_data)
+
+    if firstPull:
+        dfAll = dfProv
+        firstPull = False
+    else:
+        dfAll = pd.concat([dfAll, dfProv], ignore_index=True)
     
 
 for key in providers.gas:
@@ -95,7 +109,7 @@ for key in providers.gas:
     "RateCode": 1
     }
 
-    supplier, price = get_min_offer(params)
+    supplier, price, dfProv = get_min_offer(params)
 
     new_data = {"Date": today, 
                 "ElecOrGas": 'gas', 
@@ -105,15 +119,21 @@ for key in providers.gas:
                 'Time':formatted_time}
     data_list.append(new_data)
 
+    dfAll = pd.concat([dfAll, dfProv], ignore_index=True)
+
 
 df = pd.DataFrame(data_list)
 dfFile = pd.read_csv(file)
 df = pd.concat([dfFile, df])
 
 
+# Write min file for plotting
+#df.to_csv(file, index=False) 
 
-df.to_csv(file, index=False) 
-
+# Write all data file
+dfAll['Date'] = today
+dfAll['Time'] = formatted_time 
+dfAll.to_pickle('allData.pkl')
 
 
 '''
