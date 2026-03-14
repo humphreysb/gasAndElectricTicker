@@ -128,7 +128,7 @@ df = pd.concat([dfFile, df])
 
 
 # Write min file for plotting
-#df.to_csv(file, index=False) 
+df.to_csv(file, index=False) 
 
 # Write all data file
 dfAll['Date'] = today
