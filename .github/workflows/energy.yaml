@@ -47,4 +47,4 @@ steps:
       git commit -m "Daily energy update" || echo "No changes to commit"
 
       git push origin HEAD:main
-```
+
