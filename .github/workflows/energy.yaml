@@ -37,6 +37,8 @@ jobs:
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
-          git add elec_gas_data.csv index.html
-          git commit -m "Daily energy update" || echo "No changes"
+          ls -lh  # This lists all files so you can verify the CSV exists and see its size
+          git status # This will show you exactly which files Git thinks are modified
+          git add .
+          git commit -m "Daily energy update" || echo "No changes to commit"
           git push
