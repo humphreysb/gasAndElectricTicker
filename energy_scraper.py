@@ -134,6 +134,7 @@ df.to_csv(file, index=False)
 dfAll['Date'] = today
 dfAll['Time'] = formatted_time 
 dfAll.to_pickle('allData.pkl')
+dfAll.to_csv('allData.csv')
 
 
 '''
