@@ -65,7 +65,17 @@ Date,ElecOrGas,TerritoryId,Rate,Supplier,Time
 2026-03-17,elec,7,0.0927,"Town Square Energy East LLC2200 E Williams Field RD, Ste 200, Gilbert, AZ 85295 Gilbert,AZ 85295(877) 430-0093Company UrlOffer DetailsTerms of ServiceSign Up",14:12:19
 2026-03-17,elec,6,0.0928,"Shipley Choice, LLC415 Norway St York,PA 17403(844) 243-4201Company UrlOffer DetailsTerms of ServiceSign Up",14:12:19
 2026-03-17,elec,3,0.0928,"Shipley Choice, LLC415 Norway St York,PA 17403(844) 243-4201Company UrlOffer DetailsTerms of ServiceSign Up",14:12:19
-2026-03-17,gas,1,0.31920000000000004,"Ohio Gas & ElectricP.O. Box 660403 Dallas,TX 75266-0433(866) 706-7360Company UrlOffer DetailsTerms of ServiceSign Up",14:12:19
+2026-03-17,gas,1,0.3192,"Ohio Gas & ElectricP.O. Box 660403 Dallas,TX 75266-0433(866) 706-7360Company UrlOffer DetailsTerms of ServiceSign Up",14:12:19
 2026-03-17,gas,11,0.619,"Alpha Gas And Electric LLC12 College Road Monsey,NY 10952(845) 810-0088Company UrlOffer DetailsTerms of ServiceSign Up",14:12:19
 2026-03-17,gas,10,0.479,"Ohio Gas & ElectricP.O. Box 660403 Dallas,TX 75266-0433(866) 706-7360Company UrlOffer DetailsTerms of ServiceSign Up",14:12:19
 2026-03-17,gas,8,0.659,"Ohio Gas & ElectricP.O. Box 660403 Dallas,TX 75266-0433(866) 706-7360Company UrlOffer DetailsTerms of ServiceSign Up",14:12:19
+2026-03-18,elec,9,0.0946,"APG&E6161 Savoy Dr Suite 500 Houston,TX 77036(713) 396-1757Company UrlOffer DetailsTerms of ServiceSign Up",14:14:44
+2026-03-18,elec,2,0.0958,"APG&E6161 Savoy Drive Suite 500 Houston,TX 77036(713) 396-1757Company UrlOffer DetailsTerms of ServiceSign Up",14:14:44
+2026-03-18,elec,4,0.0899,"Shipley Choice, LLC415 Norway St York,PA 17403(844) 243-4201Company UrlOffer DetailsTerms of ServiceSign Up",14:14:44
+2026-03-18,elec,7,0.0927,"Town Square Energy East LLC2200 E Williams Field RD, Ste 200, Gilbert, AZ 85295 Gilbert,AZ 85295(877) 430-0093Company UrlOffer DetailsTerms of ServiceSign Up",14:14:44
+2026-03-18,elec,6,0.0928,"Shipley Choice, LLC415 Norway St York,PA 17403(844) 243-4201Company UrlOffer DetailsTerms of ServiceSign Up",14:14:44
+2026-03-18,elec,3,0.0928,"Shipley Choice, LLC415 Norway St York,PA 17403(844) 243-4201Company UrlOffer DetailsTerms of ServiceSign Up",14:14:44
+2026-03-18,gas,1,0.31920000000000004,"Ohio Gas & ElectricP.O. Box 660403 Dallas,TX 75266-0433(866) 706-7360Company UrlOffer DetailsTerms of ServiceSign Up",14:14:44
+2026-03-18,gas,11,0.619,"Alpha Gas And Electric LLC12 College Road Monsey,NY 10952(845) 810-0088Company UrlOffer DetailsTerms of ServiceSign Up",14:14:44
+2026-03-18,gas,10,0.479,"Energy Harbor LLC168 East Market Street Akron,OH 44308(855) 487-0822Company UrlOffer DetailsTerms of ServiceSign Up",14:14:44
+2026-03-18,gas,8,0.659,"Ohio Gas & ElectricP.O. Box 660403 Dallas,TX 75266-0433(866) 706-7360Company UrlOffer DetailsTerms of ServiceSign Up",14:14:44
