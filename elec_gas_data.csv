@@ -235,7 +235,17 @@ Date,ElecOrGas,TerritoryId,Rate,Supplier,Time
 2026-04-03,elec,7,0.0887,"Town Square Energy East LLC2200 E Williams Field Rd, Suite 200 Gilbert,AZ 85295(877) 430-0093Company UrlOffer DetailsTerms of ServiceSign Up",13:55:59
 2026-04-03,elec,6,0.0887,"Town Square Energy East LLC2200 E Williams Field Rd, Suite 200 Gilbert,AZ 85295(877) 430-0093Company UrlOffer DetailsTerms of ServiceSign Up",13:55:59
 2026-04-03,elec,3,0.0887,"Town Square Energy East LLC2200 E Williams Field Rd, Suite 200 Gilbert,AZ 85295(877) 430-0093Company UrlOffer DetailsTerms of ServiceSign Up",13:55:59
-2026-04-03,gas,1,0.29900000000000004,"BTY Energy LLC11811 Shaker Blvd Suite 429 Cleveland,OH 44120(800) 977-9217Company UrlOffer DetailsTerms of ServiceSign Up",13:55:59
+2026-04-03,gas,1,0.299,"BTY Energy LLC11811 Shaker Blvd Suite 429 Cleveland,OH 44120(800) 977-9217Company UrlOffer DetailsTerms of ServiceSign Up",13:55:59
 2026-04-03,gas,11,0.619,"Alpha Gas And Electric LLC12 College Road Monsey,NY 10952(845) 810-0088Company UrlOffer DetailsTerms of ServiceSign Up",13:55:59
 2026-04-03,gas,10,0.479,"Energy Harbor LLC168 East Market Street Akron,OH 44308(855) 487-0822Company UrlOffer DetailsTerms of ServiceSign Up",13:55:59
 2026-04-03,gas,8,0.639,"Energy Harbor LLC168 East Market Street Akron,OH 44308(855) 487-0822Company UrlOffer DetailsTerms of ServiceSign Up",13:55:59
+2026-04-04,elec,9,0.0896,"Shipley Choice, LLC415 Norway St York,PA 17403(844) 243-4201Company UrlOffer DetailsTerms of ServiceSign Up",13:44:24
+2026-04-04,elec,2,0.0935,"Shipley Choice, LLC415 Norway St York,PA 17403(844) 243-4201Company UrlOffer DetailsTerms of ServiceSign Up",13:44:24
+2026-04-04,elec,4,0.0899,"Shipley Choice, LLC415 Norway St York,PA 17403(844) 243-4201Company UrlOffer DetailsTerms of ServiceSign Up",13:44:24
+2026-04-04,elec,7,0.0887,"Town Square Energy East LLC2200 E Williams Field Rd, Suite 200 Gilbert,AZ 85295(877) 430-0093Company UrlOffer DetailsTerms of ServiceSign Up",13:44:24
+2026-04-04,elec,6,0.0887,"Town Square Energy East LLC2200 E Williams Field Rd, Suite 200 Gilbert,AZ 85295(877) 430-0093Company UrlOffer DetailsTerms of ServiceSign Up",13:44:24
+2026-04-04,elec,3,0.0887,"Town Square Energy East LLC2200 E Williams Field Rd, Suite 200 Gilbert,AZ 85295(877) 430-0093Company UrlOffer DetailsTerms of ServiceSign Up",13:44:24
+2026-04-04,gas,1,0.29900000000000004,"BTY Energy LLC11811 Shaker Blvd Suite 429 Cleveland,OH 44120(800) 977-9217Company UrlOffer DetailsTerms of ServiceSign Up",13:44:24
+2026-04-04,gas,11,0.619,"Alpha Gas And Electric LLC12 College Road Monsey,NY 10952(845) 810-0088Company UrlOffer DetailsTerms of ServiceSign Up",13:44:24
+2026-04-04,gas,10,0.479,"Ohio Gas & ElectricP.O. Box 660403 Dallas,TX 75266-0433(866) 706-7360Company UrlOffer DetailsTerms of ServiceSign Up",13:44:24
+2026-04-04,gas,8,0.639,"Ohio Gas & ElectricP.O. Box 660403 Dallas,TX 75266-0433(866) 706-7360Company UrlOffer DetailsTerms of ServiceSign Up",13:44:24
