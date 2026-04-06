@@ -159,7 +159,7 @@ generate_energy_dashboard(
     elecHtml=True, 
     top_link_url="https://humphreysb.github.io/gasAndElectricTicker/gas_dashboard.html", 
     top_link_text="Switch to Gas Dashboard", 
-    threshold_rate=0.0869
+    threshold_rate=0.1019
 )
 
 # Gas Dashboard
