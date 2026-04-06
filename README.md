@@ -1,9 +1,11 @@
 # gasAndElectricTicker
 This code tracks the Ohio Electric and Gas Rate on a daily basis.  It grabs the minimum gas and electric rates from the [Ohio Energy Choice Website](https://energychoice.ohio.gov/).
 
-The resulting data is published [Here](https://humphreysb.github.io/gasAndElectricTicker/)
+The resulting ELECTRIC data is published [Here](https://humphreysb.github.io/gasAndElectricTicker/electric_dashboard.html)
 
-The mimim price is established by filtering the rates for:
+The resulting GAS data is published [Here](https://humphreysb.github.io/gasAndElectricTicker/gas_dashboard.html")
+
+The mimimum price is established by filtering the rates for:
 1) Only fixed rates
 2) Plans that only have no cancelation fees*
 3) Rates that are not introductory

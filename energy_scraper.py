@@ -7,11 +7,12 @@ import providers
 from datetime import datetime
 import os
 
+# Providers: First Energy, AEP, etc. You don;t get to choose
+# Suppliers:  Best energy, etc.  You do get to choose 
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-def get_min_offer(params):
-
+def get_supplier_data(params):
 
     url = "https://energychoice.ohio.gov/ApplesToApplesComparision.aspx"
 
@@ -26,124 +27,115 @@ def get_min_offer(params):
 
     html_wrapped = StringIO(response.text)
     tables = pd.read_html(html_wrapped)
-    dfAll = tables[0]
+    df = tables[0]
 
-    df = dfAll.copy(deep=True)
 
+    # Clean up data set
+    df = df.rename(columns={'term length': 'Term. Length'})
     df.columns = df.columns.str.strip()
-
-    df = df[df['Rate Type'].str.contains('Fixed', case=False)]
-    df = df[df['intro. price'].str.contains('No', case=False)]
-
-    df['Term. Length'] = df['Term. Length'].str.extract(r'(\d+)').astype(float)
-
-    df = df[df['Term. Length'] >= 6]
-    df = df[df['Early Term. Fee'].str.contains(r'\$0', regex=True)]
-    df = df[df['Monthly Fee'].str.contains(r'\$0', regex=True)]
-    df = df[df['promo. offers'].str.contains('No', case=False)]
-
     
-    a=1
+    # Remove the "mo"
+    df['Term. Length'] = df['Term. Length'].str.extract(r'(\d+)').astype(float) 
+
+    # Fix that some supplier use Mcf vs Ccf
     if params["Category"] == "Electric":
         key = '$/kWh' 
+        df['electric'] = True 
+        a=1
     else:
         if '$/Mcf' in df.columns:
             key = '$/Mcf'
-            a=10
+            a=1
         else:
             key = '$/Ccf'
+            a=0.1
+        df['electric'] = False 
+    df['rate'] = pd.to_numeric(df[key])/a
+    df = df.drop(key, axis=1)
+
+    # Remove % and make numeric
+    df['Renew. Content'] = pd.to_numeric(df['Renew. Content'].str.replace('%', '', regex=False), errors='coerce')
+
+    # Convert Early term fee to numeric
+    df['Early Term. Fee'] = df['Early Term. Fee'].str.replace('$', '', regex=False)
+    df['Early Term. Fee'] = df['Early Term. Fee'].str.replace('details', '', regex=False)
+    df['Early Term. Fee'] = df['Early Term. Fee'] = pd.to_numeric(df['Early Term. Fee'], errors='coerce')
 
 
+    mask = df['intro. price'].astype(str).str.contains('No', na=False)
+    df.loc[mask, 'intro. price'] = False
+    mask = df['intro. price'].astype(str).str.contains('Yes', na=False)
+    df.loc[mask, 'intro. price'] = True
 
-    df[key] = pd.to_numeric(df[key])/a
+    mask = df['promo. offers'].astype(str).str.contains('No', na=False)
+    df.loc[mask, 'promo. offers'] = False
+    mask = df['promo. offers'].astype(str).str.contains('Yes', na=False)
+    df.loc[mask, 'promo. offers'] = True
 
-    row = df.loc[df[key].idxmin()]
+    # Remove $ and make numeric
+    df['Monthly Fee'] = pd.to_numeric(df['Monthly Fee'].str.replace('$', '', regex=False), errors='coerce')
 
-    return row["Supplier"], row[key], dfAll
+    #Extraneous Column
+    df = df.drop('Click to  Compare', axis=1)
 
+    # Booleanize Rate Type
+    df['Fixed Rate'] = False
+    mask = df['Rate Type'].astype(str).str.contains('Fixed', na=False)
+    df.loc[mask, 'Fixed Rate'] = True
 
-# Load Pickle File
-allFile = 'allData.pkl'
-if not os.path.exists(allFile):
+    # Add that this is fresh data
+    df['Todays Data'] = True
+
+    # Clip suppliers extraneous info
+    df['Supplier'] = df['Supplier'].astype(str).str.split('(').str[0]
+
+    df['Date'] = datetime.now()
+
+    df['Provider'] = params['TerritoryId']
+
+    return df
+
+def get_data(category,providers):
+    # Loop through suppliers
     firstPull = True
+    for key in providers:
+        params = {
+        "Category": category,
+        "TerritoryId": key,
+        "RateCode": 1
+        }
+
+        df = get_supplier_data(params)
+
+        if firstPull:
+            dfNew = df
+            firstPull = False
+        else:
+            dfNew = pd.concat([dfNew, df], ignore_index=True)
+
+    return dfNew
+
+
+
+# Load All Data File
+allFile = 'allData.parquet'
+if not os.path.exists(allFile):
+    newFile = True
 else:
-    firstPull = False
-    dfAll = pd.read_pickle(allFile)
+    newFile = False
+    dfAll = pd.read_parquet(allFile)
+    dfAll['Todays Data'] = False
 
-file = "elec_gas_data.csv"
+# Get New Gas and Electric Data
+dfElec = get_data("Electric",providers.elec)
+dfGas = get_data("Gas",providers.gas)
+dfNew = pd.concat([dfElec, dfGas], ignore_index=True)
 
-today = date.today()
-formatted_time = datetime.now().strftime("%H:%M:%S")
-
-data_list = []
-
-
-for key in providers.elec:
-    params = {
-    "Category": "Electric",
-    "TerritoryId": key,
-    "RateCode": 1
-    }
-
-    supplier, price, dfProv = get_min_offer(params)
-
-    new_data = {"Date": today, 
-                "ElecOrGas": 'elec', 
-                'TerritoryId': key, 
-                'Rate':price, 
-                'Supplier':supplier,
-                'Time':formatted_time}
-    data_list.append(new_data)
-
-    if firstPull:
-        dfAll = dfProv
-        firstPull = False
-    else:
-        dfAll = pd.concat([dfAll, dfProv], ignore_index=True)
-    
-
-for key in providers.gas:
-    params = {
-    "Category": "Gas",
-    "TerritoryId": key,
-    "RateCode": 1
-    }
-
-    supplier, price, dfProv = get_min_offer(params)
-
-    new_data = {"Date": today, 
-                "ElecOrGas": 'gas', 
-                'TerritoryId': key, 
-                'Rate':price, 
-                'Supplier':supplier,
-                'Time':formatted_time}
-    data_list.append(new_data)
-
-    dfAll = pd.concat([dfAll, dfProv], ignore_index=True)
-
-
-df = pd.DataFrame(data_list)
-dfFile = pd.read_csv(file)
-df = pd.concat([dfFile, df])
-
-
-# Write min file for plotting
-df.to_csv(file, index=False) 
+# Concat new data with old data
+if newFile:
+    dfAll = dfNew
+else:
+    dfAll = pd.concat([dfAll, dfNew], ignore_index=True)
 
 # Write all data file
-dfAll['Date'] = today
-dfAll['Time'] = formatted_time 
-dfAll.to_pickle('allData.pkl')
-dfAll.to_csv('allData.csv')
-
-
-'''
-if not os.path.exists(file):
-    with open(file, "w", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow(["Date","ElectricPrice","ElectricSupplier","GasPrice","GasSupplier"])
-
-with open(file, "a", newline="") as f:
-    writer = csv.writer(f)
-    writer.writerow([today, elec_price, elec_supplier, gas_price, gas_supplier])
-'''
+dfAll.to_parquet(allFile)
