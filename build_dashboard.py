@@ -2,7 +2,6 @@ import pandas as pd
 import plotly.express as px
 import plotly.io as pio
 from datetime import datetime
-import pytz
 
 # 1. Import utility names from your providers.py file
 try:
@@ -25,17 +24,15 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
     )
     filtered_df = df[base_mask].copy()
     
+    # Ensure numeric types for proper sorting and comparison
+    filtered_df['rate'] = pd.to_numeric(filtered_df['rate'], errors='coerce')
+    filtered_df['Term. Length'] = pd.to_numeric(filtered_df['Term. Length'], errors='coerce')
+
     # --- 3. TIMEZONE CONVERSION (EST/EDT) ---
     filtered_df['Date'] = pd.to_datetime(filtered_df['Date'])
     if filtered_df['Date'].dt.tz is None:
         filtered_df['Date'] = filtered_df['Date'].dt.tz_localize('UTC')
     filtered_df['Date'] = filtered_df['Date'].dt.tz_convert('US/Eastern')
-    
-    # Overall latest date for the main title
-    overall_latest_str = filtered_df['Date'].max().strftime('%Y-%m-%d')
-
-    # Ensure Term. Length is numeric
-    filtered_df['Term. Length'] = pd.to_numeric(filtered_df['Term. Length'])
 
     # --- 4. APPLY UTILITY NAMES ---
     if elecHtml:
@@ -60,16 +57,12 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
     dynamic_height = 450 * num_utilities
 
     unit = "$/kWh" if elecHtml else "$/MCF"
-    title_text = f'Historical Rate Trends ({unit})'
-
     fig = px.line(
         min_rates_hist, x='Date', y='rate', color='Term_Str', symbol='Term_Str',
-        facet_col='Utility', 
-        facet_col_wrap=1,
-        title=title_text,
+        facet_col='Utility', facet_col_wrap=1,
+        title=f'Historical Rate Trends ({unit})',
         labels={'rate': f'Rate ({unit})', 'Term_Str': 'Term', 'Utility': 'Utility'},
-        markers=True, 
-        category_orders={"Term_Str": term_order_desc}
+        markers=True, category_orders={"Term_Str": term_order_desc}
     )
 
     fig.for_each_annotation(lambda a: a.update(text=f"<b>{a.text.split('=')[-1]}</b>"))
@@ -79,39 +72,40 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
     
     graph_html = pio.to_html(fig, full_html=False, include_plotlyjs='cdn')
 
-    # --- 6. GENERATE TABLES (Utility-Specific Latest Data) ---
-    # Fix: Find the latest date for each Utility and Term combination
-    latest_indices = filtered_df.groupby(['Utility', 'Term. Length'])['Date'].idxmax()
-    today_min_raw = filtered_df.loc[latest_indices].copy()
+    # --- 6. GENERATE TABLES (Strict "Todays Data" Only) ---
+    # Filter only for rows marked as today's data
+    today_df = filtered_df[filtered_df['Todays Data'] == True].copy()
     
-    # Within each utility, find the absolute minimum across all terms for Option B Bolding
     table_sections = []
-    utilities = sorted(today_min_raw['Utility'].unique())
+    if not today_df.empty:
+        # Get the best supplier per Utility and Term Length
+        today_min = today_df.loc[today_df.groupby(['Utility', 'Term. Length'])['rate'].idxmin()]
+        utilities = sorted(today_min['Utility'].unique())
 
-    for util in utilities:
-        u_data = today_min_raw[today_min_raw['Utility'] == util].sort_values(['Term. Length', 'rate'])
-        
-        # Individual "As of" date for this utility
-        util_date = u_data['Date'].max().strftime('%Y-%m-%d')
-        best_overall_rate = u_data['rate'].min()
+        for util in utilities:
+            u_data = today_min[today_min['Utility'] == util].sort_values(['Term. Length', 'rate'])
+            best_overall_rate = u_data['rate'].min()
 
-        section = f"<h2>{util} <small style='font-size:0.5em; color:#666; font-weight:normal;'>(as of {util_date})</small></h2>"
-        section += f"<table><thead><tr><th>Supplier Entity</th><th>Term</th><th>Rate ({unit})</th></tr></thead><tbody>"
+            section = f"<h2>{util}</h2>"
+            section += f"<table><thead><tr><th>Supplier Entity</th><th>Term</th><th>Rate ({unit})</th></tr></thead><tbody>"
 
-        for _, row in u_data.iterrows():
-            is_best_val = (row['rate'] == best_overall_rate)
-            is_below_thresh = threshold_rate is not None and row['rate'] < threshold_rate
-            
-            cell_class = "min-rate" if is_best_val else ""
-            if is_below_thresh: cell_class += " threshold-met"
-            
-            rate_display = f"{row['rate']:.5f}"
-            if is_best_val: rate_display = f"<b>{rate_display}</b>"
-            if is_below_thresh: rate_display = f"<i>{rate_display}</i>"
-            
-            section += f"<tr><td>{row['Supplier']}</td><td>{row['Term. Length']} Mo</td><td class='{cell_class}'>{rate_display}</td></tr>"
-        section += "</tbody></table>"
-        table_sections.append(section)
+            for _, row in u_data.iterrows():
+                # Bold if it's the absolute best value for this utility
+                is_best_val = (row['rate'] == best_overall_rate)
+                is_below_thresh = threshold_rate is not None and row['rate'] < threshold_rate
+                
+                cell_class = "min-rate" if is_best_val else ""
+                if is_below_thresh: cell_class += " threshold-met"
+                
+                rate_display = f"{row['rate']:.5f}"
+                if is_best_val: rate_display = f"<b>{rate_display}</b>"
+                if is_below_thresh: rate_display = f"<i>{rate_display}</i>"
+                
+                section += f"<tr><td>{row['Supplier']}</td><td>{row['Term. Length']} Mo</td><td class='{cell_class}'>{rate_display}</td></tr>"
+            section += "</tbody></table>"
+            table_sections.append(section)
+    else:
+        table_sections = ["<p style='text-align:center; color:#e74c3c;'>No new data has been updated for today yet.</p>"]
 
     # --- 7. ASSEMBLE FINAL HTML ---
     dashboard_title = "Electric Dashboard" if elecHtml else "Gas Dashboard"
@@ -135,7 +129,6 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
             .threshold-met {{ font-style: italic; text-decoration: underline; }}
             .container {{ max-width: 1100px; margin: auto; }}
             .section-divider {{ margin-top: 60px; padding-top: 20px; border-top: 3px double #ddd; }}
-            .date-subtitle {{ text-align: center; color: #7f8c8d; margin-top: -10px; font-size: 0.9em; }}
         </style>
     </head>
     <body>
@@ -145,7 +138,6 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
             
             <div class="table-section">
                 <h1>Current Market Leaderboard</h1>
-                <p class="date-subtitle">Data tracked in Eastern Time</p>
                 {"".join(table_sections)}
             </div>
 
