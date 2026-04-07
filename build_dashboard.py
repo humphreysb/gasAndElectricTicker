@@ -1,11 +1,16 @@
 import pandas as pd
 import plotly.express as px
 import plotly.io as pio
-
+from datetime import datetime
+import pytz
 
 # 1. Import utility names from your providers.py file
-from providers import elec
-from providers import gas
+try:
+    from providers import elec, gas
+except ImportError:
+    # Fallback for local testing if providers.py is missing
+    elec = {9:'AES Power', 2:'AEP', 4:'Duke', 7:'Ohio Edison', 6:'Ilumminating Co', 3:'Toledo Edison'}
+    gas = {1:'Enbridge-Dominion', 11:'Centerpoint', 10:'Duke', 8:'Columbia'}
 
 def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url, top_link_text, threshold_rate):
     # --- 2. LOAD & INITIAL FILTERING ---
@@ -20,9 +25,25 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
         (df['Monthly Fee'] == 0)
     )
     filtered_df = df[base_mask].copy()
+    
+    # --- 3. TIMEZONE CONVERSION (EST/EDT) ---
+    # Ensure Date column is datetime
+    filtered_df['Date'] = pd.to_datetime(filtered_df['Date'])
+    
+    # Localize to UTC if naive, then convert to US/Eastern
+    if filtered_df['Date'].dt.tz is None:
+        filtered_df['Date'] = filtered_df['Date'].dt.tz_localize('UTC')
+    
+    filtered_df['Date'] = filtered_df['Date'].dt.tz_convert('US/Eastern')
+    
+    # Determine the most recent date in Ohio Time
+    latest_date = filtered_df['Date'].max()
+    latest_date_str = latest_date.strftime('%Y-%m-%d')
+
+    # Ensure Term. Length is numeric
     filtered_df['Term. Length'] = pd.to_numeric(filtered_df['Term. Length'])
 
-    # --- 3. APPLY UTILITY NAMES FROM providers.py ---
+    # --- 4. APPLY UTILITY NAMES FROM providers.py ---
     if elecHtml:
         filtered_df['Utility'] = filtered_df['Provider'].map(elec)
     else:
@@ -30,11 +51,10 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
     
     filtered_df['Utility'] = filtered_df['Utility'].fillna(filtered_df['Supplier'].str.split().str[0])
 
-    # --- 4. GENERATE HISTORICAL GRAPHS ---
+    # --- 5. GENERATE HISTORICAL GRAPHS ---
     min_rates_hist = filtered_df.groupby(['Utility', 'Term. Length', 'Date'])['rate'].min().reset_index()
     min_rates_hist = min_rates_hist.sort_values(by=['Utility', 'Term. Length', 'Date'])
 
-    # Sync Y-axis limits
     y_min, y_max = min_rates_hist['rate'].min(), min_rates_hist['rate'].max()
     y_padding = (y_max - y_min) * 0.05
     y_range = [y_min - y_padding, y_max + y_padding]
@@ -53,21 +73,17 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
     fig = px.line(
         min_rates_hist, x='Date', y='rate', color='Term_Str', symbol='Term_Str',
         facet_col='Utility', 
-        facet_col_wrap=1,  # Single column stack
+        facet_col_wrap=1,
         title=title_text,
         labels={'rate': f'Rate ({unit})', 'Term_Str': 'Term', 'Utility': 'Utility'},
         markers=True, 
         category_orders={"Term_Str": term_order_desc}
     )
 
-    # Clean Subplot Titles (Remove "Utility=")
     fig.for_each_annotation(lambda a: a.update(text=f"<b>{a.text.split('=')[-1]}</b>"))
-    
-    # Clean X-Axis (Date only)
     fig.update_xaxes(tickformat="%Y-%m-%d", matches='x')
     fig.update_yaxes(range=y_range, matches='y')
     
-    # Final Layout - Standard Global Legend
     fig.update_layout(
         legend_title_text='Plan Term', 
         hovermode='x unified', 
@@ -77,35 +93,39 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
     
     graph_html = pio.to_html(fig, full_html=False, include_plotlyjs='cdn')
 
-    # --- 5. GENERATE TABLES (Leaderboard) ---
-    today_df = filtered_df[filtered_df['Todays Data'] == True].copy()
-    today_min = today_df.loc[today_df.groupby(['Utility', 'Term. Length'])['rate'].idxmin()]
+    # --- 6. GENERATE TABLES (Leaderboard) ---
+    # Filter for the most recent date found in the data
+    latest_df = filtered_df[filtered_df['Date'] == latest_date].copy()
     
     table_sections = []
-    utilities = sorted(today_min['Utility'].unique())
+    if not latest_df.empty:
+        today_min = latest_df.loc[latest_df.groupby(['Utility', 'Term. Length'])['rate'].idxmin()]
+        utilities = sorted(today_min['Utility'].unique())
 
-    for util in utilities:
-        u_data = today_min[today_min['Utility'] == util].sort_values(['Term. Length', 'rate'])
-        best_overall_rate = u_data['rate'].min()
+        for util in utilities:
+            u_data = today_min[today_min['Utility'] == util].sort_values(['Term. Length', 'rate'])
+            best_overall_rate = u_data['rate'].min()
 
-        section = f"<h2>{util}</h2><table><thead><tr><th>Supplier Entity</th><th>Term</th><th>Rate ({unit})</th></tr></thead><tbody>"
+            section = f"<h2>{util}</h2><table><thead><tr><th>Supplier Entity</th><th>Term</th><th>Rate ({unit})</th></tr></thead><tbody>"
 
-        for _, row in u_data.iterrows():
-            is_best_val = (row['rate'] == best_overall_rate)
-            is_below_thresh = threshold_rate is not None and row['rate'] < threshold_rate
-            
-            cell_class = "min-rate" if is_best_val else ""
-            if is_below_thresh: cell_class += " threshold-met"
-            
-            rate_display = f"{row['rate']:.5f}"
-            if is_best_val: rate_display = f"<b>{rate_display}</b>"
-            if is_below_thresh: rate_display = f"<i>{rate_display}</i>"
-            
-            section += f"<tr><td>{row['Supplier']}</td><td>{row['Term. Length']} Mo</td><td class='{cell_class}'>{rate_display}</td></tr>"
-        section += "</tbody></table>"
-        table_sections.append(section)
+            for _, row in u_data.iterrows():
+                is_best_val = (row['rate'] == best_overall_rate)
+                is_below_thresh = threshold_rate is not None and row['rate'] < threshold_rate
+                
+                cell_class = "min-rate" if is_best_val else ""
+                if is_below_thresh: cell_class += " threshold-met"
+                
+                rate_display = f"{row['rate']:.5f}"
+                if is_best_val: rate_display = f"<b>{rate_display}</b>"
+                if is_below_thresh: rate_display = f"<i>{rate_display}</i>"
+                
+                section += f"<tr><td>{row['Supplier']}</td><td>{row['Term. Length']} Mo</td><td class='{cell_class}'>{rate_display}</td></tr>"
+            section += "</tbody></table>"
+            table_sections.append(section)
+    else:
+        table_sections = ["<p>No data available for the most recent date.</p>"]
 
-    # --- 6. ASSEMBLE FINAL HTML (Table TOP, Charts BOTTOM) ---
+    # --- 7. ASSEMBLE FINAL HTML ---
     dashboard_title = "Electric Dashboard" if elecHtml else "Gas Dashboard"
     
     full_html = f"""
@@ -127,15 +147,17 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
             .threshold-met {{ font-style: italic; text-decoration: underline; }}
             .container {{ max-width: 1100px; margin: auto; }}
             .section-divider {{ margin-top: 60px; padding-top: 20px; border-top: 3px double #ddd; }}
+            .date-subtitle {{ text-align: center; color: #7f8c8d; margin-top: -10px; font-size: 0.9em; }}
         </style>
     </head>
     <body>
         <div class="container">
-            <a href="{top_link_url}" class="nav-link" target="_blank">{top_link_text}</a>
+            <a href="{top_link_url}" class="nav-link">{top_link_text}</a>
             <h1>{dashboard_title}</h1>
             
             <div class="table-section">
-                <h1>Current Market Leaderboard (Today's Data)</h1>
+                <h1>Current Market Leaderboard</h1>
+                <p class="date-subtitle">Latest Data as of: {latest_date_str} (Eastern Time)</p>
                 {"".join(table_sections)}
             </div>
 
@@ -152,22 +174,24 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
         f.write(full_html)
 
 # --- EXECUTION ---
+data_file = 'allData.parquet'
+
 # Electric Dashboard
 generate_energy_dashboard(
-    file_path='allData.parquet', 
+    file_path=data_file, 
     html_file_name='electric_dashboard.html', 
     elecHtml=True, 
-    top_link_url="https://humphreysb.github.io/gasAndElectricTicker/gas_dashboard.html", 
+    top_link_url="gas_dashboard.html", 
     top_link_text="Switch to Gas Dashboard", 
     threshold_rate=0.1019
 )
 
 # Gas Dashboard
 generate_energy_dashboard(
-    file_path='allData.parquet', 
+    file_path=data_file, 
     html_file_name='gas_dashboard.html', 
     elecHtml=False, 
-    top_link_url="https://humphreysb.github.io/gasAndElectricTicker/electric_dashboard.html", 
+    top_link_url="electric_dashboard.html", 
     top_link_text="Switch to Electric Dashboard", 
     threshold_rate=3.764
 )

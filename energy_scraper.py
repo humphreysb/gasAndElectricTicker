@@ -6,6 +6,7 @@ from io import StringIO
 import providers
 from datetime import datetime
 import os
+import pytz
 
 # Providers: First Energy, AEP, etc. You don;t get to choose
 # Suppliers:  Best energy, etc.  You do get to choose 
@@ -89,7 +90,7 @@ def get_supplier_data(params):
     # Clip suppliers extraneous info
     df['Supplier'] = df['Supplier'].astype(str).str.split('(').str[0]
 
-    df['Date'] = datetime.now()
+    df['Date'] = datetime.now(pytz.timezone('US/Eastern'))
 
     df['Provider'] = params['TerritoryId']
 
