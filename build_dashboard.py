@@ -162,7 +162,7 @@ generate_energy_dashboard(
     elecHtml=True, 
     top_link_url="gas_dashboard.html", 
     top_link_text="Switch to Gas Dashboard", 
-    threshold_rate=0.1019
+    threshold_rate=0.0869
 )
 
 generate_energy_dashboard(
@@ -171,5 +171,5 @@ generate_energy_dashboard(
     elecHtml=False, 
     top_link_url="electric_dashboard.html", 
     top_link_text="Switch to Electric Dashboard", 
-    threshold_rate=3.764
+    threshold_rate=2.99
 )
