@@ -7,7 +7,7 @@ The resulting GAS data is published [Here](https://humphreysb.github.io/gasAndEl
 
 The minimum price is established by filtering the rates for:
 1) Only fixed rates
-2) Plans that only have no cancelation fees*
+2) Plans that only have no cancelation fees
 3) Rates that are not introductory
 4) Rate terms that are 6 months or longer (experience has shown anything shorter is not long enough for phase in/out)
 5) No monthly fees
