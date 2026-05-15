@@ -3,7 +3,68 @@ import plotly.express as px
 import plotly.graph_objects as go
 import plotly.io as pio
 from datetime import datetime
+from pathlib import Path
+from urllib.parse import quote_plus
 import json
+import re
+
+
+def _clean_supplier_name(s):
+    s = str(s) if s is not None else ''
+    m = re.search(r'(?<=[a-zA-Z])\s*\.?\s*(?=\d)', s)
+    if m:
+        s = s[:m.start()]
+    s = re.split(r'\s*P\.?\s*O\.?\s*Box', s, maxsplit=1, flags=re.IGNORECASE)[0]
+    return s.rstrip(' ,.').strip()
+
+
+def _load_bbb_ratings():
+    path = Path(__file__).parent / 'bbb_ratings.json'
+    try:
+        with open(path) as f:
+            return json.load(f) or {}
+    except FileNotFoundError:
+        return {}
+
+
+BBB_RATINGS = _load_bbb_ratings()
+
+
+def _bbb_entry(cleaned_supplier):
+    """Normalize a JSON entry into (rating, url). Accepts None, str (legacy), or dict."""
+    raw = BBB_RATINGS.get(cleaned_supplier)
+    rating, url = None, None
+    if isinstance(raw, str):
+        rating = raw
+    elif isinstance(raw, dict):
+        rating = raw.get('rating')
+        url = raw.get('url')
+    return rating, url
+
+
+def _bbb_pill_html(cleaned_supplier):
+    rating, url = _bbb_entry(cleaned_supplier)
+    if not url:
+        # Google "<supplier> BBB rating" is far more reliable than BBB's own search.
+        url = f'https://www.google.com/search?q={quote_plus(cleaned_supplier + " BBB rating")}'
+    if rating:
+        head = rating.strip().upper().rstrip('+')[:1]
+        if head in ('A', 'B'):
+            cls = 'bbb-good'
+        elif head in ('D', 'F'):
+            cls = 'bbb-poor'
+        else:
+            cls = 'bbb-mid'
+        title = f'BBB rating: {rating}'
+        label = rating
+    else:
+        cls = 'bbb-unknown'
+        title = 'No rating cached — click to look up'
+        label = '—'
+    return (
+        f'<a class="bbb-pill {cls}" href="{url}" target="_blank" '
+        f'rel="noopener" title="{title}">{label}</a>'
+    )
 
 # 1. Import utility names from your providers.py file
 try:
@@ -362,7 +423,7 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
 
             section = '<article class="util-card">'
             section += f'<header class="util-card-head"><h3>{util}</h3>{rate_pill}{badge_html}</header>'
-            section += f"<table><thead><tr><th>Supplier</th><th>Term</th><th>Rate ({unit})</th></tr></thead><tbody>"
+            section += f"<table><thead><tr><th>Supplier</th><th>BBB</th><th>Term</th><th>Rate ({unit})</th></tr></thead><tbody>"
 
             for _, row in u_data.iterrows():
                 # Bold if it's the absolute best value for this utility
@@ -375,11 +436,124 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
                 rate_display = f"{row['rate']:.5f}"
                 if is_best_val: rate_display = f"<b>{rate_display}</b>"
 
-                section += f"<tr><td>{row['Supplier']}</td><td>{row['Term. Length']} Mo</td><td class='{cell_class}'>{rate_display}</td></tr>"
+                supplier_clean = _clean_supplier_name(row['Supplier'])
+                bbb_html = _bbb_pill_html(supplier_clean)
+
+                section += (
+                    f"<tr><td>{supplier_clean}</td><td>{bbb_html}</td>"
+                    f"<td>{row['Term. Length']} Mo</td>"
+                    f"<td class='{cell_class}'>{rate_display}</td></tr>"
+                )
             section += "</tbody></table></article>"
             table_sections.append(section)
     else:
         table_sections = ['<p class="empty-state">No new data has been updated for today yet.</p>']
+
+    # --- 6c. TOP 5 RATES SECTION DATA ---
+    if not today_df.empty:
+        today_clean = today_df.copy()
+        today_clean['SupplierClean'] = today_clean['Supplier'].apply(_clean_supplier_name)
+        today_dedup = (
+            today_clean.groupby(['Utility', 'SupplierClean', 'Term. Length'], as_index=False)['rate']
+                       .min()
+                       .sort_values('rate')
+        )
+        unique_terms = sorted({int(t) for t in today_dedup['Term. Length'].unique()})
+        top_rates_buckets = {'all': []}
+        for t in unique_terms:
+            top_rates_buckets[str(t)] = []
+        for _, row in today_dedup.iterrows():
+            rating, url = _bbb_entry(row['SupplierClean'])
+            entry = {
+                'utility': row['Utility'],
+                'supplier': row['SupplierClean'],
+                'term': int(row['Term. Length']),
+                'rate': float(row['rate']),
+                'bbb': rating,
+                'bbb_url': url,
+            }
+            if len(top_rates_buckets['all']) < 5:
+                top_rates_buckets['all'].append(entry)
+            tkey = str(entry['term'])
+            if tkey in top_rates_buckets and len(top_rates_buckets[tkey]) < 5:
+                top_rates_buckets[tkey].append(entry)
+        top_rates_payload = {'unit': unit, 'data': top_rates_buckets}
+        top_rates_term_options = '<option value="all">All terms</option>' + "".join(
+            f'<option value="{t}">{t} months</option>' for t in unique_terms
+        )
+        top_rates_available = True
+    else:
+        top_rates_payload = {'unit': unit, 'data': {'all': []}}
+        top_rates_term_options = '<option value="all">All terms</option>'
+        top_rates_available = False
+    top_rates_payload_json = json.dumps(top_rates_payload)
+
+    if top_rates_available:
+        top_rates_section_html = f"""
+        <section class="card top-rates-card">
+            <h2 class="section-title" style="margin-top:0">Top 5 Rates Right Now</h2>
+            <div class="top-rates-controls">
+                <label>Filter by term
+                    <select id="top-rates-term-select">{top_rates_term_options}</select>
+                </label>
+            </div>
+            <table class="top-rates-table">
+                <thead>
+                    <tr><th>#</th><th>Utility</th><th>Supplier</th><th>BBB</th><th>Term</th><th>Rate ({unit})</th></tr>
+                </thead>
+                <tbody id="top-rates-tbody"></tbody>
+            </table>
+        </section>
+"""
+    else:
+        top_rates_section_html = ''
+
+    top_rates_js = (
+        "<script>\n(function() {\n"
+        "  var PAYLOAD = " + top_rates_payload_json + ";\n"
+        "  var sel = document.getElementById('top-rates-term-select');\n"
+        "  var tbody = document.getElementById('top-rates-tbody');\n"
+        "  if (!sel || !tbody) return;\n"
+        "  function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }\n"
+        "  function bbbPill(supplier, rating, url) {\n"
+        "    var href = url || ('https://www.google.com/search?q=' + encodeURIComponent(supplier + ' BBB rating'));\n"
+        "    if (rating) {\n"
+        "      var head = rating.trim().toUpperCase().replace('+', '').substring(0, 1);\n"
+        "      var cls = (head === 'A' || head === 'B') ? 'bbb-good' : (head === 'D' || head === 'F') ? 'bbb-poor' : 'bbb-mid';\n"
+        "      return '<a class=\"bbb-pill ' + cls + '\" href=\"' + href + '\" target=\"_blank\" rel=\"noopener\" title=\"BBB rating: ' + esc(rating) + '\">' + esc(rating) + '</a>';\n"
+        "    }\n"
+        "    return '<a class=\"bbb-pill bbb-unknown\" href=\"' + href + '\" target=\"_blank\" rel=\"noopener\" title=\"No rating cached — click to look up\">—</a>';\n"
+        "  }\n"
+        "  function render() {\n"
+        "    var term = sel.value;\n"
+        "    var rows = (PAYLOAD.data[term] || []);\n"
+        "    if (rows.length === 0) {\n"
+        "      tbody.innerHTML = '<tr><td colspan=\"6\" class=\"empty-cell\">No data for that term.</td></tr>';\n"
+        "      return;\n"
+        "    }\n"
+        "    tbody.innerHTML = rows.map(function(r, i) {\n"
+        "      return '<tr>' +\n"
+        "        '<td class=\"rank-cell\">' + (i + 1) + '</td>' +\n"
+        "        '<td>' + esc(r.utility) + '</td>' +\n"
+        "        '<td>' + esc(r.supplier) + '</td>' +\n"
+        "        '<td>' + bbbPill(r.supplier, r.bbb, r.bbb_url) + '</td>' +\n"
+        "        '<td>' + r.term + ' Mo</td>' +\n"
+        "        '<td class=\"rate-cell\">' + r.rate.toFixed(5) + '</td>' +\n"
+        "      '</tr>';\n"
+        "    }).join('');\n"
+        "  }\n"
+        "  var KEY = 'gAndETicker_top_rates_term_' + (document.body.getAttribute('data-dashboard') || 'x');\n"
+        "  var saved = localStorage.getItem(KEY);\n"
+        "  if (saved && [].some.call(sel.options, function(o) { return o.value === saved; })) {\n"
+        "    sel.value = saved;\n"
+        "  }\n"
+        "  sel.addEventListener('change', function() {\n"
+        "    localStorage.setItem(KEY, sel.value);\n"
+        "    render();\n"
+        "  });\n"
+        "  render();\n"
+        "})();\n</script>"
+    )
 
     # --- 7. ASSEMBLE FINAL HTML ---
     dashboard_title = "Electric Dashboard" if elecHtml else "Gas Dashboard"
@@ -567,6 +741,39 @@ body {
   box-shadow: 0 0 0 3px var(--accent-fade);
 }
 .chart-view[hidden], .trend-view[hidden] { display: none !important; }
+.top-rates-controls { display: flex; align-items: flex-end; gap: 16px; margin: 0 0 12px; flex-wrap: wrap; }
+.top-rates-controls label { display: flex; flex-direction: column; font-weight: 700; color: var(--muted); font-size: 0.7em; text-transform: uppercase; letter-spacing: 0.5px; }
+.top-rates-controls select {
+  margin-top: 6px; padding: 8px 12px;
+  border: 1px solid var(--border); border-radius: 6px;
+  font-size: 0.92em; font-family: inherit; color: var(--text); background: var(--card);
+  min-width: 220px;
+}
+.top-rates-controls select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-fade); }
+.top-rates-table { width: 100%; border-collapse: collapse; margin: 0; }
+.top-rates-table th, .top-rates-table td {
+  border: none; border-bottom: 1px solid var(--border);
+  padding: 8px 6px; text-align: left; font-size: 0.93em;
+}
+.top-rates-table tr:last-child td { border-bottom: none; }
+.top-rates-table th {
+  color: var(--muted); font-weight: 600;
+  font-size: 0.7em; text-transform: uppercase; letter-spacing: 0.5px;
+}
+.top-rates-table .rank-cell { font-weight: 700; color: var(--muted); width: 32px; }
+.top-rates-table .rate-cell { color: var(--accent); font-weight: 700; font-variant-numeric: tabular-nums; }
+.top-rates-table .empty-cell { text-align: center; color: var(--muted); padding: 16px; font-style: italic; }
+.bbb-pill {
+  display: inline-block; padding: 2px 9px;
+  border-radius: 999px; font-size: 0.78em; font-weight: 700;
+  text-decoration: none; letter-spacing: 0.3px;
+  min-width: 28px; text-align: center;
+}
+.bbb-pill.bbb-good { background: var(--accent-fade); color: var(--accent); border: 1px solid #b6e8c8; }
+.bbb-pill.bbb-mid  { background: var(--warn-fade); color: var(--warn); border: 1px solid #f5d27a; }
+.bbb-pill.bbb-poor { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+.bbb-pill.bbb-unknown { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
+.bbb-pill:hover { filter: brightness(0.97); }
 .data-warning {
   background: var(--warn-fade); border: 1px solid #f5d27a;
   border-radius: 8px; padding: 10px 14px; margin: 0 0 14px;
@@ -817,6 +1024,7 @@ body {
             <p class="subtitle">Ohio energy choice rates as of {current_date_str}</p>
         </header>
         {calculator_html}
+        {top_rates_section_html}
         <h2 class="section-title">Current Market Leaderboard</h2>
         <div class="leaderboard-cards">
             {"".join(table_sections)}
@@ -849,6 +1057,7 @@ body {
         </details>
     </main>
     {calculator_js}
+    {top_rates_js}
     {chart_switcher_js}
     {weather_js}
 </body>
