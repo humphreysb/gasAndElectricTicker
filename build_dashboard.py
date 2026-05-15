@@ -1,5 +1,6 @@
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import plotly.io as pio
 from datetime import datetime
 import json
@@ -53,29 +54,248 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
 
     min_rates_hist['Term_Str'] = min_rates_hist['Term. Length'].astype(str) + " Mo"
     term_order_desc = sorted(min_rates_hist['Term_Str'].unique(), key=lambda x: float(x.split()[0]), reverse=True)
-
-    num_utilities = len(min_rates_hist['Utility'].unique())
-    dynamic_height = 240 * num_utilities + 80
+    term_order_asc = sorted(min_rates_hist['Term_Str'].unique(), key=lambda x: float(x.split()[0]))
 
     unit = "$/kWh" if elecHtml else "$/MCF"
-    fig = px.line(
+    num_utilities = len(min_rates_hist['Utility'].unique())
+    num_terms = len(term_order_asc)
+
+    PLOT_FONT = dict(family='-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', color='#1a2233')
+
+    def _style_chart(fig, height, show_legend=True):
+        fig.update_xaxes(tickformat="%Y-%m-%d")
+        fig.update_layout(
+            hovermode='x unified', height=height,
+            margin=dict(t=30, b=40, l=55, r=20),
+            paper_bgcolor='white', plot_bgcolor='#fafbfc',
+            font=PLOT_FONT,
+            legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='left', x=0) if show_legend else dict(),
+            showlegend=show_legend,
+        )
+        return fig
+
+    # View 1: each utility (facet), all terms (color) — current default
+    fig1 = px.line(
         min_rates_hist, x='Date', y='rate', color='Term_Str', symbol='Term_Str',
         facet_col='Utility', facet_col_wrap=1,
-        labels={'rate': f'Rate ({unit})', 'Term_Str': 'Term', 'Utility': 'Utility'},
-        markers=True, category_orders={"Term_Str": term_order_desc}
+        labels={'rate': f'Rate ({unit})', 'Term_Str': 'Term'},
+        markers=True, category_orders={"Term_Str": term_order_desc},
+    )
+    fig1.for_each_annotation(lambda a: a.update(text=f"<b>{a.text.split('=')[-1]}</b>", font=dict(size=13)))
+    fig1.update_xaxes(matches='x')
+    fig1.update_yaxes(range=y_range, matches='y')
+    _style_chart(fig1, 240 * num_utilities + 80)
+    fig1.update_layout(legend_title_text='Term')
+
+    # View 2: each term (facet), all utilities (color)
+    fig2 = px.line(
+        min_rates_hist, x='Date', y='rate', color='Utility',
+        facet_col='Term_Str', facet_col_wrap=1,
+        labels={'rate': f'Rate ({unit})'},
+        markers=True, category_orders={"Term_Str": term_order_asc},
+    )
+    fig2.for_each_annotation(lambda a: a.update(text=f"<b>{a.text.split('=')[-1]}</b>", font=dict(size=13)))
+    fig2.update_xaxes(matches='x')
+    fig2.update_yaxes(range=y_range, matches='y')
+    _style_chart(fig2, 240 * num_terms + 80)
+    fig2.update_layout(legend_title_text='Utility')
+
+    # View 3: cheapest daily rate per utility (min across all terms)
+    cheapest_per_util_day = (
+        filtered_df.assign(Day=filtered_df['Date'].dt.normalize())
+                   .groupby(['Utility', 'Day'])['rate'].min().reset_index()
+                   .rename(columns={'Day': 'Date'})
+                   .sort_values(['Utility', 'Date'])
+    )
+    fig3 = px.line(
+        cheapest_per_util_day, x='Date', y='rate', color='Utility',
+        labels={'rate': f'Best Rate ({unit})'},
+        markers=True,
+    )
+    fig3.update_yaxes(range=y_range)
+    _style_chart(fig3, 520)
+    fig3.update_layout(legend_title_text='Utility')
+
+    # View 4: market minimum — the lowest rate anywhere each day
+    market_min_day = (
+        filtered_df.assign(Day=filtered_df['Date'].dt.normalize())
+                   .groupby('Day')['rate'].min().reset_index()
+                   .rename(columns={'Day': 'Date'})
+                   .sort_values('Date')
+    )
+    fig4 = px.line(
+        market_min_day, x='Date', y='rate',
+        labels={'rate': f'Market Min ({unit})'},
+        markers=True,
+    )
+    fig4.update_traces(line=dict(color='#15803d', width=3), marker=dict(color='#15803d', size=7))
+    fig4.update_yaxes(range=y_range)
+    _style_chart(fig4, 420, show_legend=False)
+
+    chart_views_meta = [
+        ('by-utility', 'Each utility, all terms',                fig1),
+        ('by-term',    'Each term, all utilities',               fig2),
+        ('cheap-util', 'Cheapest rate per utility',              fig3),
+        ('market-min', 'Market minimum (cheapest rate anywhere)', fig4),
+    ]
+    chart_html_parts = []
+    for i, (vid, _label, fig) in enumerate(chart_views_meta):
+        include_js = 'cdn' if i == 0 else False
+        inner = pio.to_html(fig, full_html=False, include_plotlyjs=include_js)
+        hidden_attr = '' if i == 0 else ' hidden'
+        chart_html_parts.append(f'<div class="chart-view" data-view="{vid}"{hidden_attr}>{inner}</div>')
+    chart_views_html = "".join(chart_html_parts)
+    chart_view_options = "\n".join(
+        f'<option value="{vid}">{label}</option>' for vid, label, _ in chart_views_meta
     )
 
-    fig.for_each_annotation(lambda a: a.update(text=f"<b>{a.text.split('=')[-1]}</b>", font=dict(size=13)))
-    fig.update_xaxes(tickformat="%Y-%m-%d", matches='x')
-    fig.update_yaxes(range=y_range, matches='y')
-    fig.update_layout(
-        legend_title_text='Plan Term', hovermode='x unified', height=dynamic_height,
-        margin=dict(t=30, b=40, l=50, r=20),
-        paper_bgcolor='white', plot_bgcolor='#fafbfc',
-        font=dict(family='-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', color='#1a2233'),
+    # --- 5b. LONG-TERM TREND VIEWS (weekly / monthly / yearly / seasonality) ---
+    span_days = max((filtered_df['Date'].max() - filtered_df['Date'].min()).days + 1, 1)
+    span_weeks = span_days / 7
+    span_months = span_days / 30.4
+    span_years = span_days / 365.25
+
+    # Aggregations
+    weekly_summary = (
+        filtered_df.assign(Bucket=filtered_df['Date'].dt.tz_localize(None).dt.to_period('W').dt.start_time)
+                   .groupby('Bucket')['rate'].agg(avg='mean', minimum='min').reset_index()
+                   .rename(columns={'Bucket': 'Date'})
+                   .sort_values('Date')
     )
-    
-    graph_html = pio.to_html(fig, full_html=False, include_plotlyjs='cdn')
+    monthly_summary = (
+        filtered_df.assign(Bucket=filtered_df['Date'].dt.tz_localize(None).dt.to_period('M').dt.start_time)
+                   .groupby('Bucket')['rate'].agg(avg='mean', minimum='min').reset_index()
+                   .rename(columns={'Bucket': 'Date'})
+                   .sort_values('Date')
+    )
+    yearly_summary = (
+        filtered_df.assign(Year=filtered_df['Date'].dt.year)
+                   .groupby('Year')['rate'].agg(avg='mean', minimum='min').reset_index()
+                   .sort_values('Year')
+    )
+
+    MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+    season_actual = (
+        filtered_df.assign(Month=filtered_df['Date'].dt.month)
+                   .groupby('Month')['rate'].agg(avg='mean', minimum='min').reset_index()
+    )
+    # Pad to all 12 months so the chart always shows full year
+    seasonality = pd.DataFrame({'Month': range(1, 13)}).merge(season_actual, on='Month', how='left')
+    seasonality['MonthName'] = seasonality['Month'].map(lambda m: MONTH_NAMES[m - 1])
+    season_observed = seasonality.dropna(subset=['avg'])
+    lowest_idx = season_observed['avg'].idxmin() if not season_observed.empty else None
+    lowest_month_num = int(seasonality.loc[lowest_idx, 'Month']) if lowest_idx is not None else None
+    lowest_month_name = seasonality.loc[lowest_idx, 'MonthName'] if lowest_idx is not None else None
+    lowest_month_avg = float(seasonality.loc[lowest_idx, 'avg']) if lowest_idx is not None else None
+
+    def _trend_line(df_in, title_y, height):
+        f = go.Figure()
+        f.add_trace(go.Scatter(
+            x=df_in['Date'], y=df_in['avg'], mode='lines+markers',
+            name=f'Avg ({unit})',
+            line=dict(color='#1a2233', width=2), marker=dict(size=7),
+        ))
+        f.add_trace(go.Scatter(
+            x=df_in['Date'], y=df_in['minimum'], mode='lines+markers',
+            name=f'Min ({unit})',
+            line=dict(color='#15803d', width=2, dash='dot'), marker=dict(size=7),
+        ))
+        f.update_yaxes(title_text=title_y)
+        return _style_chart(f, height)
+
+    fig_weekly = _trend_line(weekly_summary, f'Rate ({unit})', 420)
+    fig_monthly = _trend_line(monthly_summary, f'Rate ({unit})', 420)
+
+    # Yearly: bar chart (small number of points)
+    fig_yearly = go.Figure()
+    fig_yearly.add_trace(go.Bar(
+        x=yearly_summary['Year'].astype(str), y=yearly_summary['avg'],
+        name=f'Avg ({unit})', marker=dict(color='#1a2233'),
+    ))
+    fig_yearly.add_trace(go.Bar(
+        x=yearly_summary['Year'].astype(str), y=yearly_summary['minimum'],
+        name=f'Min ({unit})', marker=dict(color='#15803d'),
+    ))
+    fig_yearly.update_yaxes(title_text=f'Rate ({unit})')
+    fig_yearly.update_xaxes(title_text='Year')
+    fig_yearly.update_layout(barmode='group')
+    _style_chart(fig_yearly, 420)
+
+    # Seasonality: bar chart of avg per calendar month, lowest highlighted
+    bar_colors = []
+    for _, r in seasonality.iterrows():
+        if pd.isna(r['avg']):
+            bar_colors.append('#e5e7eb')  # no data
+        elif lowest_month_num is not None and int(r['Month']) == lowest_month_num:
+            bar_colors.append('#15803d')  # lowest
+        else:
+            bar_colors.append('#9ca3af')  # observed
+
+    fig_season = go.Figure()
+    fig_season.add_trace(go.Bar(
+        x=seasonality['MonthName'], y=seasonality['avg'],
+        marker=dict(color=bar_colors),
+        text=[f'{v:.4f}' if pd.notna(v) else 'no data' for v in seasonality['avg']],
+        textposition='outside',
+        hovertemplate='%{x}<br>Avg rate: %{y:.5f}<extra></extra>',
+        name='Avg rate',
+        showlegend=False,
+    ))
+    if lowest_month_name is not None and lowest_month_avg is not None:
+        fig_season.add_annotation(
+            x=lowest_month_name, y=lowest_month_avg,
+            text=f'⬇ Lowest avg<br>({lowest_month_name})',
+            showarrow=True, arrowhead=2, arrowcolor='#15803d',
+            ax=0, ay=-40, font=dict(color='#15803d', size=12, family=PLOT_FONT['family']),
+            bgcolor='white', bordercolor='#15803d', borderwidth=1, borderpad=4,
+        )
+    fig_season.update_yaxes(title_text=f'Avg rate ({unit})')
+    fig_season.update_xaxes(title_text='Calendar month')
+    _style_chart(fig_season, 460, show_legend=False)
+
+    # Per-view sparsity notes
+    def _note(needed_label, have_label, ok):
+        cls = 'data-warning' if not ok else 'data-warning data-warning-ok'
+        return f'<div class="{cls}">Have {have_label}. {needed_label}</div>'
+
+    weekly_note = _note(
+        'Need ~8+ weeks for a meaningful weekly trend.',
+        f'{span_weeks:.1f} weeks of data',
+        span_weeks >= 8,
+    )
+    monthly_note = _note(
+        'Need ~6+ months for a meaningful monthly trend.',
+        f'{span_months:.1f} months of data',
+        span_months >= 6,
+    )
+    yearly_note = _note(
+        'Need ≥2 years for a year-over-year view.',
+        f'{span_years:.2f} years of data',
+        span_years >= 2,
+    )
+    seasonality_note = _note(
+        'Need ≥2 years (ideally 3+) before the "lowest month" marker is reliable.',
+        f'{span_years:.2f} years of data covering {len(season_observed)} of 12 months',
+        span_years >= 2,
+    )
+
+    trend_views_meta = [
+        ('weekly',      'Weekly (avg + min)',                 fig_weekly,  weekly_note),
+        ('monthly',     'Monthly (avg + min)',                fig_monthly, monthly_note),
+        ('yearly',      'Yearly (avg + min)',                 fig_yearly,  yearly_note),
+        ('seasonality', 'Seasonality — when are rates lowest?', fig_season,  seasonality_note),
+    ]
+    trend_html_parts = []
+    for i, (vid, _label, fig, note) in enumerate(trend_views_meta):
+        inner = pio.to_html(fig, full_html=False, include_plotlyjs=False)
+        hidden_attr = '' if i == 0 else ' hidden'
+        trend_html_parts.append(
+            f'<div class="trend-view" data-trend="{vid}"{hidden_attr}>{note}{inner}</div>'
+        )
+    trend_views_html = "".join(trend_html_parts)
+    trend_view_options = "\n".join(
+        f'<option value="{vid}">{label}</option>' for vid, label, _, _ in trend_views_meta
+    )
 
     # --- 6. GENERATE TABLES (Strict "Todays Data" Only) ---
     # Filter only for rows marked as today's data
@@ -303,6 +523,35 @@ body {
 }
 .chart-section[open] summary::after { transform: rotate(180deg); }
 .chart-body { padding: 4px 22px 22px; }
+.chart-controls {
+  display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap;
+  margin: 4px 0 14px;
+}
+.chart-controls label {
+  display: flex; flex-direction: column;
+  font-weight: 700; color: var(--muted);
+  font-size: 0.7em; text-transform: uppercase; letter-spacing: 0.5px;
+}
+.chart-controls select {
+  margin-top: 6px; padding: 8px 12px;
+  border: 1px solid var(--border); border-radius: 6px;
+  font-size: 0.92em; font-family: inherit; color: var(--text); background: var(--card);
+  min-width: 280px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.chart-controls select:focus {
+  outline: none; border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-fade);
+}
+.chart-view[hidden], .trend-view[hidden] { display: none !important; }
+.data-warning {
+  background: var(--warn-fade); border: 1px solid #f5d27a;
+  border-radius: 8px; padding: 10px 14px; margin: 0 0 14px;
+  color: var(--warn); font-size: 0.88em; line-height: 1.5;
+}
+.data-warning.data-warning-ok {
+  background: var(--accent-fade); border-color: #b6e8c8; color: var(--accent);
+}
 @media (max-width: 640px) {
   .calc-form { grid-template-columns: 1fr; }
   .topnav-inner { padding: 10px 16px; gap: 12px; }
@@ -407,6 +656,41 @@ body {
 
     elec_active = 'tab-active' if elecHtml else ''
     gas_active = 'tab-active' if not elecHtml else ''
+    dash_type = 'electric' if elecHtml else 'gas'
+
+    chart_switcher_js = (
+        "<script>\n(function() {\n"
+        "  var DASH = document.body.getAttribute('data-dashboard') || 'x';\n"
+        "  function bind(selectId, viewAttr, viewClass) {\n"
+        "    var sel = document.getElementById(selectId);\n"
+        "    if (!sel) return;\n"
+        "    var KEY = 'gAndETicker_' + selectId + '_' + DASH;\n"
+        "    function showView(target) {\n"
+        "      document.querySelectorAll('.' + viewClass).forEach(function(div) {\n"
+        "        var match = div.getAttribute(viewAttr) === target;\n"
+        "        div.hidden = !match;\n"
+        "        if (match) {\n"
+        "          var plot = div.querySelector('.js-plotly-plot');\n"
+        "          if (plot && window.Plotly) {\n"
+        "            setTimeout(function() { Plotly.Plots.resize(plot); }, 0);\n"
+        "          }\n"
+        "        }\n"
+        "      });\n"
+        "    }\n"
+        "    var saved = localStorage.getItem(KEY);\n"
+        "    if (saved && [].some.call(sel.options, function(o) { return o.value === saved; })) {\n"
+        "      sel.value = saved;\n"
+        "      showView(saved);\n"
+        "    }\n"
+        "    sel.addEventListener('change', function() {\n"
+        "      localStorage.setItem(KEY, sel.value);\n"
+        "      showView(sel.value);\n"
+        "    });\n"
+        "  }\n"
+        "  bind('chart-view-select', 'data-view', 'chart-view');\n"
+        "  bind('trends-view-select', 'data-trend', 'trend-view');\n"
+        "})();\n</script>"
+    )
 
     full_html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -416,7 +700,7 @@ body {
     <title>{dashboard_title}</title>
     <style>{styles_block}</style>
 </head>
-<body>
+<body data-dashboard="{dash_type}">
     <nav class="topnav">
         <div class="topnav-inner">
             <span class="brand">Ohio Energy Tracker</span>
@@ -438,10 +722,33 @@ body {
         </div>
         <details class="chart-section" open>
             <summary>Historical Trends</summary>
-            <div class="chart-body">{graph_html}</div>
+            <div class="chart-body">
+                <div class="chart-controls">
+                    <label>View
+                        <select id="chart-view-select">
+                            {chart_view_options}
+                        </select>
+                    </label>
+                </div>
+                {chart_views_html}
+            </div>
+        </details>
+        <details class="chart-section">
+            <summary>Long-term Trends &amp; Seasonality</summary>
+            <div class="chart-body">
+                <div class="chart-controls">
+                    <label>View
+                        <select id="trends-view-select">
+                            {trend_view_options}
+                        </select>
+                    </label>
+                </div>
+                {trend_views_html}
+            </div>
         </details>
     </main>
     {calculator_js}
+    {chart_switcher_js}
 </body>
 </html>
 """
