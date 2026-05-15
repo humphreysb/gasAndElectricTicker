@@ -55,21 +55,25 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
     term_order_desc = sorted(min_rates_hist['Term_Str'].unique(), key=lambda x: float(x.split()[0]), reverse=True)
 
     num_utilities = len(min_rates_hist['Utility'].unique())
-    dynamic_height = 450 * num_utilities
+    dynamic_height = 240 * num_utilities + 80
 
     unit = "$/kWh" if elecHtml else "$/MCF"
     fig = px.line(
         min_rates_hist, x='Date', y='rate', color='Term_Str', symbol='Term_Str',
         facet_col='Utility', facet_col_wrap=1,
-        title=f'Historical Rate Trends ({unit})',
         labels={'rate': f'Rate ({unit})', 'Term_Str': 'Term', 'Utility': 'Utility'},
         markers=True, category_orders={"Term_Str": term_order_desc}
     )
 
-    fig.for_each_annotation(lambda a: a.update(text=f"<b>{a.text.split('=')[-1]}</b>"))
+    fig.for_each_annotation(lambda a: a.update(text=f"<b>{a.text.split('=')[-1]}</b>", font=dict(size=13)))
     fig.update_xaxes(tickformat="%Y-%m-%d", matches='x')
     fig.update_yaxes(range=y_range, matches='y')
-    fig.update_layout(legend_title_text='Plan Term', hovermode='x unified', height=dynamic_height, margin=dict(t=100, b=50))
+    fig.update_layout(
+        legend_title_text='Plan Term', hovermode='x unified', height=dynamic_height,
+        margin=dict(t=30, b=40, l=50, r=20),
+        paper_bgcolor='white', plot_bgcolor='#fafbfc',
+        font=dict(family='-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', color='#1a2233'),
+    )
     
     graph_html = pio.to_html(fig, full_html=False, include_plotlyjs='cdn')
 
@@ -108,28 +112,31 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
         for util in utilities:
             u_data = today_min[today_min['Utility'] == util].sort_values(['Term. Length', 'rate'])
             best_overall_rate = u_data['rate'].min()
+            current_min = current_min_by_util.get(util, best_overall_rate)
 
             badge_html = '<span class="badge-90d-low" title="Today\'s minimum matches the lowest rate in the last 90 days">90-DAY LOW</span>' if is_90d_low_by_util.get(util, False) else ''
-            section = f"<h2>{util} {badge_html}</h2>"
-            section += f"<table><thead><tr><th>Supplier Entity</th><th>Term</th><th>Rate ({unit})</th></tr></thead><tbody>"
+            rate_pill = f'<span class="pill pill-rate">Min today: {current_min:.5f} {unit}</span>'
+
+            section = '<article class="util-card">'
+            section += f'<header class="util-card-head"><h3>{util}</h3>{rate_pill}{badge_html}</header>'
+            section += f"<table><thead><tr><th>Supplier</th><th>Term</th><th>Rate ({unit})</th></tr></thead><tbody>"
 
             for _, row in u_data.iterrows():
                 # Bold if it's the absolute best value for this utility
                 is_best_val = (row['rate'] == best_overall_rate)
                 is_below_thresh = threshold_rate is not None and row['rate'] < threshold_rate
-                
+
                 cell_class = "min-rate" if is_best_val else ""
                 if is_below_thresh: cell_class += " threshold-met"
-                
+
                 rate_display = f"{row['rate']:.5f}"
                 if is_best_val: rate_display = f"<b>{rate_display}</b>"
-                if is_below_thresh: rate_display = f"<i>{rate_display}</i>"
-                
+
                 section += f"<tr><td>{row['Supplier']}</td><td>{row['Term. Length']} Mo</td><td class='{cell_class}'>{rate_display}</td></tr>"
-            section += "</tbody></table>"
+            section += "</tbody></table></article>"
             table_sections.append(section)
     else:
-        table_sections = ["<p style='text-align:center; color:#e74c3c;'>No new data has been updated for today yet.</p>"]
+        table_sections = ['<p class="empty-state">No new data has been updated for today yet.</p>']
 
     # --- 7. ASSEMBLE FINAL HTML ---
     dashboard_title = "Electric Dashboard" if elecHtml else "Gas Dashboard"
@@ -152,43 +159,184 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
         f'<option value="{u}">{u}</option>' for u in sorted(current_min_by_util.keys())
     )
 
-    extra_styles = """
-            .badge-90d-low { display: inline-block; background: #27ae60; color: white; padding: 4px 10px; font-size: 0.55em; border-radius: 12px; vertical-align: middle; margin-left: 12px; font-weight: bold; letter-spacing: 0.5px; }
-            .calc-form { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; background: white; padding: 24px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-            .calc-form label { display: flex; flex-direction: column; font-weight: 600; color: #555; font-size: 0.9em; }
-            .calc-form input, .calc-form select { margin-top: 6px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 1em; font-family: inherit; }
-            .calc-results { margin-top: 20px; padding: 20px 24px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-            .calc-prompt { color: #999; text-align: center; font-style: italic; margin: 0; }
-            .calc-win { color: #27ae60; font-size: 1.1em; margin: 0 0 8px; font-weight: 600; }
-            .calc-neutral { color: #f39c12; font-size: 1.05em; margin: 0; }
-            .calc-results ul { font-size: 1.15em; line-height: 1.8; margin: 0; padding-left: 24px; }
-            @media (max-width: 600px) { .calc-form { grid-template-columns: 1fr; } }
+    styles_block = """
+:root {
+  --bg: #f6f7f9;
+  --card: #ffffff;
+  --text: #15202b;
+  --muted: #677078;
+  --border: #e4e7eb;
+  --accent: #15803d;
+  --accent-fade: #ecfdf5;
+  --warn: #b45309;
+  --warn-fade: #fffbeb;
+  --shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.topnav {
+  position: sticky; top: 0; z-index: 10;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: saturate(180%) blur(8px);
+  -webkit-backdrop-filter: saturate(180%) blur(8px);
+  border-bottom: 1px solid var(--border);
+}
+.topnav-inner {
+  max-width: 1100px; margin: 0 auto;
+  padding: 12px 24px;
+  display: flex; align-items: center; gap: 16px;
+}
+.brand { font-weight: 700; font-size: 1.02em; color: var(--text); letter-spacing: -0.01em; }
+.tabs { display: flex; gap: 4px; margin-left: auto; }
+.tab {
+  text-decoration: none; padding: 7px 14px; border-radius: 6px;
+  color: var(--muted); font-weight: 600; font-size: 0.92em;
+  transition: background 0.15s, color 0.15s;
+}
+.tab:hover { background: var(--bg); color: var(--text); }
+.tab-active { background: var(--accent-fade); color: var(--accent); }
+.container { max-width: 1100px; margin: 0 auto; padding: 28px 24px 64px; }
+.page-header { margin-bottom: 24px; }
+.page-header h1 {
+  margin: 0 0 4px;
+  font-size: 1.65em; font-weight: 700; letter-spacing: -0.015em;
+  color: var(--text);
+}
+.subtitle { margin: 0; color: var(--muted); font-size: 0.92em; }
+.card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 10px; padding: 20px 24px;
+  margin-bottom: 20px; box-shadow: var(--shadow);
+}
+.section-title {
+  margin: 24px 0 12px;
+  font-size: 0.74em; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.7px;
+  color: var(--muted);
+}
+.section-title:first-child { margin-top: 0; }
+.leaderboard-cards { display: flex; flex-direction: column; gap: 10px; margin-bottom: 8px; }
+.util-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px 20px; box-shadow: var(--shadow);
+}
+.util-card-head {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 6px; flex-wrap: wrap;
+}
+.util-card-head h3 { margin: 0; font-size: 1.02em; font-weight: 700; color: var(--text); }
+.pill {
+  display: inline-block; padding: 3px 10px;
+  border-radius: 999px; font-size: 0.72em; font-weight: 600; letter-spacing: 0.2px;
+}
+.pill-rate { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
+.badge-90d-low {
+  background: var(--accent); color: white;
+  padding: 3px 10px; border-radius: 999px;
+  font-size: 0.68em; font-weight: 700; letter-spacing: 0.5px;
+}
+.util-card table { width: 100%; border-collapse: collapse; margin: 0; }
+.util-card th, .util-card td {
+  border: none; border-bottom: 1px solid var(--border);
+  padding: 7px 4px; text-align: left; font-size: 0.92em;
+}
+.util-card tr:last-child td { border-bottom: none; }
+.util-card th {
+  color: var(--muted); font-weight: 600;
+  font-size: 0.7em; text-transform: uppercase; letter-spacing: 0.5px;
+}
+.min-rate { color: var(--accent); font-weight: 700; }
+.threshold-met { font-style: normal; text-decoration: none; }
+.empty-state {
+  text-align: center; color: var(--warn);
+  background: var(--warn-fade); border: 1px dashed #f5d27a;
+  border-radius: 10px; padding: 20px; margin: 0 0 20px;
+}
+.calc-form {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+}
+.calc-form label {
+  display: flex; flex-direction: column;
+  font-weight: 700; color: var(--muted);
+  font-size: 0.7em; text-transform: uppercase; letter-spacing: 0.5px;
+}
+.calc-form input, .calc-form select {
+  margin-top: 6px; padding: 9px 11px;
+  border: 1px solid var(--border); border-radius: 6px;
+  font-size: 0.95em; font-family: inherit; color: var(--text); background: var(--card);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.calc-form input:focus, .calc-form select:focus {
+  outline: none; border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-fade);
+}
+.calc-results { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+.calc-prompt { color: var(--muted); font-style: italic; margin: 0; }
+.calc-win { color: var(--accent); margin: 0 0 6px; font-weight: 700; font-size: 1em; }
+.calc-neutral { color: var(--warn); margin: 0; font-weight: 600; }
+.calc-results ul { font-size: 1.02em; line-height: 1.7; margin: 0; padding-left: 22px; }
+.calc-results ul li b { color: var(--text); }
+.chart-section {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 10px; box-shadow: var(--shadow);
+  margin-bottom: 24px; overflow: hidden;
+}
+.chart-section summary {
+  padding: 14px 22px; cursor: pointer; list-style: none;
+  display: flex; align-items: center; justify-content: space-between;
+  font-weight: 700; font-size: 0.74em; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.7px;
+  user-select: none;
+}
+.chart-section summary::-webkit-details-marker { display: none; }
+.chart-section summary::after {
+  content: "▾"; display: inline-block; color: var(--muted);
+  transition: transform 0.2s ease;
+}
+.chart-section[open] summary::after { transform: rotate(180deg); }
+.chart-body { padding: 4px 22px 22px; }
+@media (max-width: 640px) {
+  .calc-form { grid-template-columns: 1fr; }
+  .topnav-inner { padding: 10px 16px; gap: 12px; }
+  .brand { font-size: 0.95em; }
+  .container { padding: 22px 16px 48px; }
+  .util-card { padding: 12px 14px; }
+  .page-header h1 { font-size: 1.4em; }
+}
 """
 
     calculator_html = f"""
-            <div class="calculator-section section-divider">
-                <h1>Should I Switch?</h1>
-                <div class="calc-form">
-                    <label>My utility
-                        <select id="calc-utility">
-                            <option value="">— pick one —</option>
-                            {util_options}
-                        </select>
-                    </label>
-                    <label>My current rate ({unit})
-                        <input type="number" step="0.00001" id="calc-current-rate" placeholder="e.g. {placeholder_rate}">
-                    </label>
-                    <label>Monthly usage ({usage_unit_label})
-                        <input type="number" step="1" id="calc-usage" placeholder="e.g. {placeholder_usage}">
-                    </label>
-                    <label>Early termination fee ($, optional)
-                        <input type="number" step="1" id="calc-etf" value="0">
-                    </label>
-                </div>
-                <div class="calc-results" id="calc-results">
-                    <p class="calc-prompt">Enter your details above to see savings.</p>
-                </div>
+        <section class="card calculator-card" aria-label="Savings calculator">
+            <h2 class="section-title" style="margin-top:0">Should I Switch?</h2>
+            <div class="calc-form">
+                <label>My utility
+                    <select id="calc-utility">
+                        <option value="">— pick one —</option>
+                        {util_options}
+                    </select>
+                </label>
+                <label>My current rate ({unit})
+                    <input type="number" step="0.00001" id="calc-current-rate" placeholder="e.g. {placeholder_rate}">
+                </label>
+                <label>Monthly usage ({usage_unit_label})
+                    <input type="number" step="1" id="calc-usage" placeholder="e.g. {placeholder_usage}">
+                </label>
+                <label>Early termination fee ($, optional)
+                    <input type="number" step="1" id="calc-etf" value="0">
+                </label>
             </div>
+            <div class="calc-results" id="calc-results">
+                <p class="calc-prompt">Enter your details above to see savings.</p>
+            </div>
+        </section>
 """
 
     calculator_js = (
@@ -257,46 +405,46 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
         "})();\n</script>"
     )
 
-    full_html = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <title>{dashboard_title}</title>
-        <style>
-            body {{ font-family: 'Segoe UI', Tahoma, sans-serif; margin: 40px; background-color: #fcfcfc; color: #333; }}
-            .nav-link {{ display: block; text-align: center; font-weight: bold; margin-bottom: 30px; font-size: 1.3em; color: #2980b9; text-decoration: none; border: 2px solid #2980b9; padding: 10px; border-radius: 5px; width: fit-content; margin: auto; }}
-            .nav-link:hover {{ background-color: #2980b9; color: white; }}
-            h1 {{ text-align: center; color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 10px; }}
-            h2 {{ color: #2980b9; margin-top: 50px; border-left: 10px solid #2980b9; padding-left: 15px; background: #f1f7fa; padding: 8px 15px; }}
-            table {{ border-collapse: collapse; width: 100%; margin-bottom: 20px; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }}
-            th, td {{ border: 1px solid #ddd; padding: 12px; text-align: left; }}
-            th {{ background-color: #f8f9fa; color: #555; text-transform: uppercase; font-size: 0.85em; }}
-            .min-rate {{ background-color: #f0fff4; color: #27ae60; }}
-            .threshold-met {{ font-style: italic; text-decoration: underline; }}
-            .container {{ max-width: 1100px; margin: auto; }}
-            .section-divider {{ margin-top: 60px; padding-top: 20px; border-top: 3px double #ddd; }}{extra_styles}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <a href="{top_link_url}" class="nav-link">{top_link_text}</a>
-            <h1>{dashboard_title}</h1>
+    elec_active = 'tab-active' if elecHtml else ''
+    gas_active = 'tab-active' if not elecHtml else ''
 
-            <div class="table-section">
-                <h1>Current Market Leaderboard</h1>
-                {"".join(table_sections)}
-            </div>
-{calculator_html}
-            <div class="graph-section section-divider">
-                <h1>Historical Trends</h1>
-                {graph_html}
+    full_html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{dashboard_title}</title>
+    <style>{styles_block}</style>
+</head>
+<body>
+    <nav class="topnav">
+        <div class="topnav-inner">
+            <span class="brand">Ohio Energy Tracker</span>
+            <div class="tabs">
+                <a href="electric_dashboard.html" class="tab {elec_active}">Electric</a>
+                <a href="gas_dashboard.html" class="tab {gas_active}">Gas</a>
             </div>
         </div>
-        {calculator_js}
-    </body>
-    </html>
-    """
+    </nav>
+    <main class="container">
+        <header class="page-header">
+            <h1>{dashboard_title}</h1>
+            <p class="subtitle">Ohio energy choice rates as of {current_date_str}</p>
+        </header>
+        {calculator_html}
+        <h2 class="section-title">Current Market Leaderboard</h2>
+        <div class="leaderboard-cards">
+            {"".join(table_sections)}
+        </div>
+        <details class="chart-section" open>
+            <summary>Historical Trends</summary>
+            <div class="chart-body">{graph_html}</div>
+        </details>
+    </main>
+    {calculator_js}
+</body>
+</html>
+"""
     
     with open(html_file_name, 'w', encoding='utf-8') as f:
         f.write(full_html)
