@@ -132,11 +132,34 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
     fig4.update_yaxes(range=y_range)
     _style_chart(fig4, 420, show_legend=False)
 
+    # View 5: market min + weather overlay (temperature traces injected client-side via Open-Meteo)
+    fig5 = go.Figure()
+    fig5.add_trace(go.Scatter(
+        x=market_min_day['Date'], y=market_min_day['rate'],
+        mode='lines+markers',
+        name=f'Market min ({unit})',
+        line=dict(color='#15803d', width=3),
+        marker=dict(color='#15803d', size=7),
+    ))
+    fig5.update_yaxes(range=y_range, title_text=f'Rate ({unit})')
+    _style_chart(fig5, 480)
+    fig5.update_layout(
+        yaxis2=dict(
+            title='Temperature (°F)',
+            overlaying='y', side='right', showgrid=False,
+            zeroline=False,
+        ),
+        margin=dict(t=30, b=40, l=55, r=55),
+    )
+    # Give this figure's wrapping div an id we can target from JS
+    fig5.update_layout(meta={'weather_chart': True})
+
     chart_views_meta = [
         ('by-utility', 'Each utility, all terms',                fig1),
         ('by-term',    'Each term, all utilities',               fig2),
         ('cheap-util', 'Cheapest rate per utility',              fig3),
         ('market-min', 'Market minimum (cheapest rate anywhere)', fig4),
+        ('weather',    'Market minimum + Ohio weather overlay',   fig5),
     ]
     chart_html_parts = []
     for i, (vid, _label, fig) in enumerate(chart_views_meta):
@@ -658,6 +681,84 @@ body {
     gas_active = 'tab-active' if not elecHtml else ''
     dash_type = 'electric' if elecHtml else 'gas'
 
+    weather_js = (
+        "<script>\n(function() {\n"
+        "  var LAT = 39.96, LON = -82.99;\n"  # Columbus, Ohio
+        "  var CACHE_KEY = 'gAndETicker_weather_v1';\n"
+        "  var CACHE_TTL_MS = 12 * 60 * 60 * 1000;\n"
+        "  function loadCache() {\n"
+        "    try {\n"
+        "      var raw = localStorage.getItem(CACHE_KEY);\n"
+        "      if (!raw) return null;\n"
+        "      var obj = JSON.parse(raw);\n"
+        "      if (Date.now() - obj.ts > CACHE_TTL_MS) return null;\n"
+        "      return obj.data;\n"
+        "    } catch (e) { return null; }\n"
+        "  }\n"
+        "  function saveCache(data) {\n"
+        "    try { localStorage.setItem(CACHE_KEY, JSON.stringify({ts: Date.now(), data: data})); } catch (e) {}\n"
+        "  }\n"
+        "  function fetchWeather() {\n"
+        "    var cached = loadCache();\n"
+        "    if (cached) return Promise.resolve(cached);\n"
+        "    var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + LAT + '&longitude=' + LON +\n"
+        "      '&daily=temperature_2m_mean,temperature_2m_max,temperature_2m_min&past_days=92&forecast_days=14' +\n"
+        "      '&temperature_unit=fahrenheit&timezone=America%2FNew_York';\n"
+        "    return fetch(url).then(function(r) { if (!r.ok) throw new Error('open-meteo ' + r.status); return r.json(); })\n"
+        "      .then(function(data) { saveCache(data); return data; });\n"
+        "  }\n"
+        "  function findWeatherChart() {\n"
+        "    var views = document.querySelectorAll('.chart-view[data-view=\"weather\"] .js-plotly-plot');\n"
+        "    return views[0] || null;\n"
+        "  }\n"
+        "  function applyOverlay(chartDiv, wx) {\n"
+        "    if (!chartDiv || !window.Plotly || !wx || !wx.daily) return;\n"
+        "    var dates = wx.daily.time;\n"
+        "    var tMean = wx.daily.temperature_2m_mean;\n"
+        "    var tMax = wx.daily.temperature_2m_max;\n"
+        "    var tMin = wx.daily.temperature_2m_min;\n"
+        "    var today = new Date().toISOString().slice(0, 10);\n"
+        "    var splitIdx = dates.findIndex(function(d) { return d > today; });\n"
+        "    if (splitIdx < 0) splitIdx = dates.length;\n"
+        "    var histX = dates.slice(0, splitIdx);\n"
+        "    var histY = tMean.slice(0, splitIdx);\n"
+        "    var fcX = dates.slice(Math.max(splitIdx - 1, 0));\n"
+        "    var fcY = tMean.slice(Math.max(splitIdx - 1, 0));\n"
+        "    var bandX = dates.concat([].slice.call(dates).reverse());\n"
+        "    var bandY = tMax.concat([].slice.call(tMin).reverse());\n"
+        "    var traces = [\n"
+        "      { x: bandX, y: bandY, fill: 'toself', fillcolor: 'rgba(59, 130, 246, 0.08)',\n"
+        "        line: {color: 'rgba(0,0,0,0)'}, name: 'Temp range (min/max)', yaxis: 'y2',\n"
+        "        hoverinfo: 'skip', showlegend: true, type: 'scatter' },\n"
+        "      { x: histX, y: histY, mode: 'lines', name: 'Temp mean (°F)', yaxis: 'y2',\n"
+        "        line: {color: '#3b82f6', width: 2}, type: 'scatter' },\n"
+        "      { x: fcX, y: fcY, mode: 'lines', name: 'Temp forecast', yaxis: 'y2',\n"
+        "        line: {color: '#3b82f6', width: 2, dash: 'dot'}, type: 'scatter' }\n"
+        "    ];\n"
+        "    Plotly.addTraces(chartDiv, traces);\n"
+        "    Plotly.relayout(chartDiv, {\n"
+        "      shapes: [{ type: 'line', x0: today, x1: today, yref: 'paper', y0: 0, y1: 1,\n"
+        "                 line: {color: '#9ca3af', width: 1, dash: 'dash'} }],\n"
+        "      annotations: [{ x: today, y: 1, yref: 'paper', text: 'today', showarrow: false,\n"
+        "                      yanchor: 'bottom', font: {size: 10, color: '#9ca3af'} }]\n"
+        "    });\n"
+        "  }\n"
+        "  function init() {\n"
+        "    var chartDiv = findWeatherChart();\n"
+        "    if (!chartDiv) return;\n"
+        "    if (chartDiv.dataset.weatherLoaded === '1') return;\n"
+        "    chartDiv.dataset.weatherLoaded = '1';\n"
+        "    fetchWeather().then(function(wx) { applyOverlay(chartDiv, wx); })\n"
+        "      .catch(function(err) { console.warn('Weather overlay unavailable:', err); chartDiv.dataset.weatherLoaded = '0'; });\n"
+        "  }\n"
+        "  if (document.readyState === 'loading') {\n"
+        "    document.addEventListener('DOMContentLoaded', init);\n"
+        "  } else {\n"
+        "    init();\n"
+        "  }\n"
+        "})();\n</script>"
+    )
+
     chart_switcher_js = (
         "<script>\n(function() {\n"
         "  var DASH = document.body.getAttribute('data-dashboard') || 'x';\n"
@@ -749,6 +850,7 @@ body {
     </main>
     {calculator_js}
     {chart_switcher_js}
+    {weather_js}
 </body>
 </html>
 """
