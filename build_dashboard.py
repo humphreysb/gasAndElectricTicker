@@ -560,6 +560,58 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
         "})();\n</script>"
     )
 
+    # --- 6. MARKET PULSE ENGINE ---
+    this_month = datetime.now().month
+    market_pulse_cards = []
+    
+    # Utilities in today's data
+    util_today = today_df.groupby('Utility')['rate'].min().to_dict()
+    
+    # Historical distribution for this month
+    hist_month = filtered_df[filtered_df['Date'].dt.month == this_month]
+    
+    for util, today_min in util_today.items():
+        hist_util = hist_month[hist_month['Utility'] == util]['rate']
+        if len(hist_util) > 5:
+            # Calculate percentile (lower is better for consumer)
+            percentile = (hist_util < today_min).mean() * 100
+            
+            if percentile < 15:
+                status, color, icon = "Strong Signal", "var(--accent)", "🟢"
+                advice = "Rates are near historical lows for this month. Excellent time to lock in a 12-24 month term."
+            elif percentile < 35:
+                status, color, icon = "Good Value", "var(--accent)", "🟢"
+                advice = "Rates are below average. A good time to switch if your current contract is expiring."
+            elif percentile < 65:
+                status, color, icon = "Neutral", "var(--warn)", "🟡"
+                advice = "Rates are at typical seasonal levels. Consider a shorter 6-month term to stay flexible."
+            else:
+                status, color, icon = "Wait if Possible", "#b91c1c", "🔴"
+                advice = "Rates are currently higher than usual for this month. If possible, wait for a seasonal dip."
+                
+            market_pulse_cards.append(f"""
+                <div class="stat-card" style="border-left: 4px solid {color}; text-align: left;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span class="stat-label">{util} Pulse</span>
+                        <span style="font-size: 0.8em; font-weight: 800; color: {color};">{status}</span>
+                    </div>
+                    <div style="font-size: 1.1em; font-weight: 700; margin-bottom: 4px;">{icon} {percentile:.0f}th Percentile</div>
+                    <div style="font-size: 0.75em; color: var(--muted); line-height: 1.3;">{advice}</div>
+                </div>
+            """)
+
+    market_pulse_html = f"""
+        <section class="card" style="padding: 0; overflow: hidden;">
+            <div style="background: #f1f5f9; padding: 12px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+                <h2 style="margin: 0; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);">Market Pulse: Is now a good time to switch?</h2>
+                <span style="font-size: 0.7em; font-weight: 700; color: var(--muted);">Based on 5Y Historical Data</span>
+            </div>
+            <div class="hero-stats" style="padding: 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; justify-content: stretch;">
+                {"".join(market_pulse_cards)}
+            </div>
+        </section>
+    """ if market_pulse_cards else ""
+
     # --- 7. ASSEMBLE FINAL HTML ---
     dashboard_title = "Electric Dashboard" if elecHtml else "Gas Dashboard"
     other_dash = "Gas" if elecHtml else "Electric"
@@ -1026,6 +1078,8 @@ body {
         <p style="margin-top: -24px; margin-bottom: 32px; font-size: 0.85em; font-style: italic; color: #94a3b8; text-align: center;">
             * This is a free open-source project. Rates are automated and may contain errors. Always verify data on official provider websites.
         </p>
+        
+        {market_pulse_html}
         {calculator_html}
         {top_rates_section_html}
         
