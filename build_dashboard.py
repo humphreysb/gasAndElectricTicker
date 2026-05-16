@@ -989,12 +989,22 @@ body {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Ohio {dashboard_title}</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <link rel="apple-touch-icon" href="icon-192.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>{styles_block}</style>
 </head>
 <body data-dashboard="{dash_type}">
+    <script>
+        if ('serviceWorker' in navigator) {{
+            window.addEventListener('load', () => {{
+                navigator.serviceWorker.register('sw.js');
+            }});
+        }}
+    </script>
     <nav class="topnav">
         <div class="topnav-inner">
             <span class="brand">Ohio Energy Tracker</span>
