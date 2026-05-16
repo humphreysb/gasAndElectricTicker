@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ohio-energy-v3';
+const CACHE_NAME = 'ohio-energy-v4';
 const ASSETS = [
   './',
   './electric_dashboard.html',
