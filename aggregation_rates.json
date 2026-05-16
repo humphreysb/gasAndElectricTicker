@@ -1,0 +1,28 @@
+{
+  "Columbus": {
+    "Electric": [
+      { "rate": 0.09080, "label": "Columbus Clean Energy (til May 2026)", "utility": "AEP" },
+      { "rate": 0.1001, "label": "Columbus Clean Energy (June 2026+)", "utility": "AEP" }
+    ],
+    "Gas": [
+      { "rate": 6.499, "label": "Columbus Gas Aggregation", "utility": "Columbia" }
+    ]
+  },
+  "Cleveland": {
+    "Electric": [
+      { "rate": 0.09236, "label": "SOPEC Aggregation (til July 2026)", "utility": "The Illuminating Co" }
+    ],
+    "Gas": [
+      { "rate": 4.59, "label": "NOPEC Standard (Summer)", "utility": "Enbridge-Dominion" },
+      { "rate": 5.25, "label": "NOPEC 12-Month Fixed", "utility": "Enbridge-Dominion" }
+    ]
+  },
+  "Cincinnati": {
+    "Electric": [
+      { "rate": 0.0825, "label": "Cincinnati Aggregation", "utility": "Duke" }
+    ],
+    "Gas": [
+      { "rate": 5.49, "label": "Cincinnati Gas Aggregation", "utility": "Duke" }
+    ]
+  }
+}
