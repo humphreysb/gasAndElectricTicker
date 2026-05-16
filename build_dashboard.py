@@ -157,6 +157,7 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
     fig2 = px.line(
         min_rates_hist, x='Date', y='rate', color='Utility',
         facet_col='Term_Str', facet_col_wrap=1,
+        facet_row_spacing=min(0.02, 1.0 / max(num_terms, 2) * 0.5),
         labels={'rate': f'Rate ({unit})'},
         markers=True, category_orders={"Term_Str": term_order_asc},
     )
@@ -277,7 +278,31 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
     lowest_month_name = seasonality.loc[lowest_idx, 'MonthName'] if lowest_idx is not None else None
     lowest_month_avg = float(seasonality.loc[lowest_idx, 'avg']) if lowest_idx is not None else None
 
-    def _trend_line(df_in, title_y, height):
+    # --- EIA macro overlay (Ohio residential state-average rate) ---
+    eia_path = Path(__file__).parent / 'eiaData.parquet'
+    eia_monthly = pd.DataFrame()
+    eia_yearly = pd.DataFrame()
+    eia_season = pd.DataFrame()
+    if eia_path.exists():
+        try:
+            _eia = pd.read_parquet(eia_path)
+            _eia = _eia[_eia['electric'] == elecHtml].copy()
+            if not _eia.empty:
+                _eia['Date'] = pd.to_datetime(_eia['Date'])
+                _eia = _eia.sort_values('Date')
+                eia_monthly = _eia[['Date', 'rate']].copy()
+                eia_yearly = (
+                    _eia.assign(Year=_eia['Date'].dt.year)
+                        .groupby('Year')['rate'].mean().reset_index()
+                )
+                eia_season = (
+                    _eia.assign(Month=_eia['Date'].dt.month)
+                        .groupby('Month')['rate'].mean().reset_index()
+                )
+        except Exception as _e:
+            print(f"EIA overlay disabled: {_e}")
+
+    def _trend_line(df_in, title_y, height, eia_df=None):
         f = go.Figure()
         f.add_trace(go.Scatter(
             x=df_in['Date'], y=df_in['avg'], mode='lines+markers',
@@ -289,11 +314,17 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
             name=f'Min ({unit})',
             line=dict(color='#15803d', width=2, dash='dot'), marker=dict(size=7),
         ))
+        if eia_df is not None and not eia_df.empty:
+            f.add_trace(go.Scatter(
+                x=eia_df['Date'], y=eia_df['rate'], mode='lines',
+                name='Ohio residential avg (EIA)',
+                line=dict(color='#3b82f6', width=2, dash='dash'),
+            ))
         f.update_yaxes(title_text=title_y)
         return _style_chart(f, height)
 
     fig_weekly = _trend_line(weekly_summary, f'Rate ({unit})', 420)
-    fig_monthly = _trend_line(monthly_summary, f'Rate ({unit})', 420)
+    fig_monthly = _trend_line(monthly_summary, f'Rate ({unit})', 420, eia_df=eia_monthly)
 
     # Yearly: bar chart (small number of points)
     fig_yearly = go.Figure()
@@ -305,6 +336,11 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
         x=yearly_summary['Year'].astype(str), y=yearly_summary['minimum'],
         name=f'Min ({unit})', marker=dict(color='#15803d'),
     ))
+    if not eia_yearly.empty:
+        fig_yearly.add_trace(go.Bar(
+            x=eia_yearly['Year'].astype(str), y=eia_yearly['rate'],
+            name='Ohio residential avg (EIA)', marker=dict(color='#3b82f6'),
+        ))
     fig_yearly.update_yaxes(title_text=f'Rate ({unit})')
     fig_yearly.update_xaxes(title_text='Year')
     fig_yearly.update_layout(barmode='group')
@@ -338,9 +374,18 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
             ax=0, ay=-40, font=dict(color='#15803d', size=12, family=PLOT_FONT['family']),
             bgcolor='white', bordercolor='#15803d', borderwidth=1, borderpad=4,
         )
+    if not eia_season.empty:
+        eia_season = eia_season.copy()
+        eia_season['MonthName'] = eia_season['Month'].map(lambda m: MONTH_NAMES[int(m) - 1])
+        fig_season.add_trace(go.Scatter(
+            x=eia_season['MonthName'], y=eia_season['rate'],
+            mode='lines+markers', name='Ohio residential avg (EIA, 25-yr)',
+            line=dict(color='#3b82f6', width=2, dash='dash'),
+            marker=dict(size=8, color='#3b82f6'),
+        ))
     fig_season.update_yaxes(title_text=f'Avg rate ({unit})')
     fig_season.update_xaxes(title_text='Calendar month')
-    _style_chart(fig_season, 460, show_legend=False)
+    _style_chart(fig_season, 460, show_legend=not eia_season.empty)
 
     # Per-view sparsity notes
     def _note(needed_label, have_label, ok):
@@ -772,6 +817,26 @@ body {
 }
 
 .util-card table { width: 100%; border-collapse: collapse; }
+.map-container {
+  display: flex; gap: 32px; align-items: stretch; margin-bottom: 24px;
+}
+.ohio-map-box {
+  flex: 0 0 320px; background: white; border-radius: 16px;
+  padding: 16px; border: 1px solid var(--border); box-shadow: var(--shadow-sm);
+  display: flex; flex-direction: column; align-items: center;
+}
+.ohio-map { width: 100%; height: auto; max-width: 280px; }
+.map-region {
+  fill: #f8fafc; stroke: #cbd5e1; stroke-width: 1.5; cursor: pointer;
+  transition: all 0.2s;
+}
+.map-region:hover { fill: var(--primary-fade); stroke: var(--primary); }
+.map-region.active { fill: var(--primary); stroke: #1e3a8a; }
+.map-label {
+  font-size: 14px; font-weight: 700; fill: #94a3b8; pointer-events: none;
+  text-anchor: middle;
+}
+.calculator-card { flex: 1; margin-bottom: 0 !important; }
 .util-card th, .util-card td {
   padding: 10px 8px; text-align: left; font-size: 0.9em;
   border-bottom: 1px solid #f1f5f9;
@@ -912,8 +977,43 @@ body {
         "    IDS.forEach(function(id) {\n"
         "      var el = $(id);\n"
         "      el.addEventListener('input', render);\n"
-        "      el.addEventListener('change', render);\n"
+        "      el.addEventListener('change', function() {\n"
+        "        if (id === 'calc-util') updateMapHighlight(el.value);\n"
+        "        render();\n"
+        "      });\n"
         "    });\n"
+        "\n"
+        "    // Map Interaction Logic\n"
+        "    var regions = document.querySelectorAll('.map-region');\n"
+        "    var utilSelect = $('calc-util');\n"
+        "    \n"
+        "    function updateMapHighlight(selectedUtil) {\n"
+        "      regions.forEach(function(r) {\n"
+        "        var title = r.getAttribute('title');\n"
+        "        // Handle fuzzy matching for AEP/AES brands\n"
+        "        var isMatch = selectedUtil.includes(title) || title.includes(selectedUtil);\n"
+        "        r.classList.toggle('active', isMatch);\n"
+        "      });\n"
+        "    }\n"
+        "\n"
+        "    regions.forEach(function(region) {\n"
+        "      region.addEventListener('click', function() {\n"
+        "        var targetUtil = region.getAttribute('title');\n"
+        "        // Find the matching option in the dropdown\n"
+        "        for (var i = 0; i < utilSelect.options.length; i++) {\n"
+        "          var opt = utilSelect.options[i].value;\n"
+        "          if (opt.includes(targetUtil) || targetUtil.includes(opt)) {\n"
+        "            utilSelect.value = opt;\n"
+        "            updateMapHighlight(opt);\n"
+        "            render();\n"
+        "            break;\n"
+        "          }\n"
+        "        }\n"
+        "      });\n"
+        "    });\n"
+        "    \n"
+        "    // Initial Map State\n"
+        "    updateMapHighlight(utilSelect.value);\n"
         "    render();\n"
         "  });\n"
         "})();\n</script>"
@@ -1034,6 +1134,27 @@ body {
         "  bind('trends-view-select', 'data-trend', 'trend-view');\n"
         "})();\n</script>"
     )
+    
+        map_html = """
+            <div class="ohio-map-box">
+                <span style="font-size: 0.7em; font-weight: 700; color: var(--muted); text-transform: uppercase; margin-bottom: 12px;">Quick Select Your Region</span>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" class="ohio-map">
+                  <path d="M120 40 L380 40 L440 100 L440 400 L250 460 L60 400 L60 100 Z" fill="none" stroke="#e2e8f0" stroke-width="2"/>
+                  <path d="M60 100 L200 100 L200 180 L60 180 Z" class="map-region" data-provider="3" title="Toledo Edison"/>
+                  <path d="M300 40 L440 100 L440 150 L300 150 Z" class="map-region" data-provider="6" title="The Illuminating Co"/>
+                  <path d="M200 100 L300 40 L300 150 L440 150 L440 250 L320 250 L320 180 L200 180 Z" class="map-region" data-provider="7" title="Ohio Edison"/>
+                  <path d="M60 180 L200 180 L200 320 L60 320 Z" class="map-region" data-provider="9" title="AES Ohio"/>
+                  <path d="M60 320 L200 320 L200 420 L120 450 L60 400 Z" class="map-region" data-provider="4" title="Duke Energy"/>
+                  <path d="M200 180 L320 180 L320 250 L440 250 L440 400 L250 460 L200 420 Z" class="map-region" data-provider="2" title="AEP Ohio"/>
+                  <text x="130" y="140" class="map-label">Toledo</text>
+                  <text x="370" y="100" class="map-label">Cleveland</text>
+                  <text x="260" y="240" class="map-label">Columbus</text>
+                  <text x="130" y="250" class="map-label">Dayton</text>
+                  <text x="130" y="380" class="map-label">Cincy</text>
+                </svg>
+                <p style="font-size: 0.65em; color: var(--muted); margin-top: 12px; text-align: center;">Click your region to filter rates</p>
+            </div>
+        """
 
     full_html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -1074,6 +1195,7 @@ body {
     
     {hero_section}
 
+
     <main class="container">
         <p style="margin-top: -24px; margin-bottom: 32px; font-size: 0.85em; font-style: italic; color: #94a3b8; text-align: center;">
             * This is a free open-source project. Rates are automated and may contain errors. Always verify data on official provider websites.
@@ -1081,7 +1203,11 @@ body {
         
         {top_rates_section_html}
         {market_pulse_html}
-        {calculator_html}
+        
+        <div class="map-container">
+            {map_html}
+            {calculator_html}
+        </div>
         
         <h2 class="section-title">Market Leaderboard</h2>
         <div class="leaderboard-cards">
