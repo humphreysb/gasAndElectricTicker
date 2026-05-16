@@ -1134,141 +1134,129 @@ body {
         "  bind('trends-view-select', 'data-trend', 'trend-view');\n"
         "})();\n</script>"
     )
-
-    map_html = f"""
-        <div class="ohio-map-box">
-            <span style="font-size: 0.7em; font-weight: 700; color: var(--muted); text-transform: uppercase; margin-bottom: 12px;">Quick Select Your Region</span>
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" class="ohio-map">
-              <path d="M120 40 L380 40 L440 100 L440 400 L250 460 L60 400 L60 100 Z" fill="none" stroke="#e2e8f0" stroke-width="2"/>
-              <path d="M60 100 L200 100 L200 180 L60 180 Z" class="map-region" data-provider="3" title="Toledo Edison"/>
-              <path d="M300 40 L440 100 L440 150 L300 150 Z" class="map-region" data-provider="6" title="The Illuminating Co"/>
-              <path d="M200 100 L300 40 L300 150 L440 150 L440 250 L320 250 L320 180 L200 180 Z" class="map-region" data-provider="7" title="Ohio Edison"/>
-              <path d="M60 180 L200 180 L200 320 L60 320 Z" class="map-region" data-provider="9" title="AES Ohio"/>
-              <path d="M60 320 L200 320 L200 420 L120 450 L60 400 Z" class="map-region" data-provider="4" title="Duke Energy"/>
-              <path d="M200 180 L320 180 L320 250 L440 250 L440 400 L250 460 L200 420 Z" class="map-region" data-provider="2" title="AEP Ohio"/>
-              <text x="130" y="140" class="map-label">Toledo</text>
-              <text x="370" y="100" class="map-label">Cleveland</text>
-              <text x="260" y="240" class="map-label">Columbus</text>
-              <text x="130" y="250" class="map-label">Dayton</text>
-              <text x="130" y="380" class="map-label">Cincy</text>
-            </svg>
-            <p style="font-size: 0.65em; color: var(--muted); margin-top: 12px; text-align: center;">Click your region to filter rates</p>
-        </div>
+    
+    map_html = """
+    <div class="ohio-map-box">
+    <span style="font-size: 0.7em; font-weight: 700; color: var(--muted); text-transform: uppercase; margin-bottom: 12px;">Quick Select Your Region</span>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" class="ohio-map">
+    <path d="M120 40 L380 40 L440 100 L440 400 L250 460 L60 400 L60 100 Z" fill="none" stroke="#e2e8f0" stroke-width="2"/>
+    <path d="M60 100 L200 100 L200 180 L60 180 Z" class="map-region" data-provider="3" title="Toledo Edison"/>
+    <path d="M300 40 L440 100 L440 150 L300 150 Z" class="map-region" data-provider="6" title="The Illuminating Co"/>
+    <path d="M200 100 L300 40 L300 150 L440 150 L440 250 L320 250 L320 180 L200 180 Z" class="map-region" data-provider="7" title="Ohio Edison"/>
+    <path d="M60 180 L200 180 L200 320 L60 320 Z" class="map-region" data-provider="9" title="AES Ohio"/>
+    <path d="M60 320 L200 320 L200 420 L120 450 L60 400 Z" class="map-region" data-provider="4" title="Duke Energy"/>
+    <path d="M200 180 L320 180 L320 250 L440 250 L440 400 L250 460 L200 420 Z" class="map-region" data-provider="2" title="AEP Ohio"/>
+    <text x="130" y="140" class="map-label">Toledo</text>
+    <text x="370" y="100" class="map-label">Cleveland</text>
+    <text x="260" y="240" class="map-label">Columbus</text>
+    <text x="130" y="250" class="map-label">Dayton</text>
+    <text x="130" y="380" class="map-label">Cincy</text>
+    </svg>
+    <p style="font-size: 0.65em; color: var(--muted); margin-top: 12px; text-align: center;">Click your region to filter rates</p>
+    </div>
     """
-
     full_html = f"""<!DOCTYPE html>
-<html lang="en">
-<head>
+    <html lang="en">
+    <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Ohio {dashboard_title}</title>
-    <link rel=manifest href="manifest.json">
+    <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0f172a">
     <link rel="apple-touch-icon" href="icon-192.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>{styles_block}</style>
-</head>
-<body data-dashboard="{dash_type}">
+    </head>
+    <body data-dashboard="{dash_type}">
     <script>
-        if ('serviceWorker' in navigator) {{
-            window.addEventListener('load', () => {{
-                const swPath = window.location.pathname.includes('gasAndElectricTicker') 
-                    ? '/gasAndElectricTicker/sw.js' 
-                    : './sw.js';
-                navigator.serviceWorker.register(swPath)
-                    .then(reg => console.log('SW registered!', reg))
-                    .catch(err => console.error('SW registration failed:', err));
-            }});
-        }}
+    if ('serviceWorker' in navigator) {{
+    window.addEventListener('load', () => {{
+    const swPath = window.location.pathname.includes('gasAndElectricTicker')
+    ? '/gasAndElectricTicker/sw.js'
+    : './sw.js';
+    navigator.serviceWorker.register(swPath)
+    .then(reg => console.log('SW registered!', reg))
+    .catch(err => console.error('SW registration failed:', err));
+    }});
+    }}
     </script>
     <nav class="topnav">
-        <div class="topnav-inner">
-            <span class="brand">Ohio Energy Tracker</span>
-            <div class="tabs">
-                <a href="electric_dashboard.html" class="tab {elec_active}">Electric</a>
-                <a href="gas_dashboard.html" class="tab {gas_active}">Gas</a>
-            </div>
-        </div>
+    <div class="topnav-inner">
+    <span class="brand">Ohio Energy Tracker</span>
+    <div class="tabs">
+    <a href="electric_dashboard.html" class="tab {elec_active}">Electric</a>
+    <a href="gas_dashboard.html" class="tab {gas_active}">Gas</a>
+    </div>
+    </div>
     </nav>
-    
     {hero_section}
-
     <main class="container">
-        <p style="margin-top: -24px; margin-bottom: 32px; font-size: 0.85em; font-style: italic; color: #94a3b8; text-align: center;">
-            * This is a free open-source project. Rates are automated and may contain errors. Always verify data on official provider websites.
-        </p>
-        
-        {top_rates_section_html}
-        {market_pulse_html}
-        
-        <div class="map-container">
-            {map_html}
-            {calculator_html}
-        </div>
-        
-        <h2 class="section-title">Market Leaderboard</h2>
-        <div class="leaderboard-cards">
-            {"".join(table_sections)}
-        </div>
-        
-        <details class="chart-section" open>
-            <summary>Market Dynamics</summary>
-            <div class="chart-body">
-                <div class="chart-controls">
-                    <label>View
-                        <select id="chart-view-select">
-                            {chart_view_options}
-                        </select>
-                    </label>
-                </div>
-                {chart_views_html}
-            </div>
-        </details>
-        
-        <details class="chart-section">
-            <summary>Long-term Trends &amp; Seasonality</summary>
-            <div class="chart-body">
-                <div class="chart-controls">
-                    <label>View
-                        <select id="trends-view-select">
-                            {trend_view_options}
-                        </select>
-                    </label>
-                </div>
-                {trend_views_html}
-            </div>
-        </details>
+    <p style="margin-top: -24px; margin-bottom: 32px; font-size: 0.85em; font-style: italic; color: #94a3b8; text-align: center;">
+    * This is a free open-source project. Rates are automated and may contain errors. Always verify data on official provider websites.
+    </p>
+    {top_rates_section_html}
+    {market_pulse_html}
+    <div class="map-container">
+    {map_html}
+    {calculator_html}
+    </div>
+    <h2 class="section-title">Market Leaderboard</h2>
+    <div class="leaderboard-cards">
+    {"".join(table_sections)}
+    </div>
+    <details class="chart-section" open>
+    <summary>Market Dynamics</summary>
+    <div class="chart-body">
+    <div class="chart-controls">
+    <label>View
+    <select id="chart-view-select">
+    {chart_view_options}
+    </select>
+    </label>
+    </div>
+    {chart_views_html}
+    </div>
+    </details>
+    <details class="chart-section">
+    <summary>Long-term Trends &amp; Seasonality</summary>
+    <div class="chart-body">
+    <div class="chart-controls">
+    <label>View
+    <select id="trends-view-select">
+    {trend_view_options}
+    </select>
+    </label>
+    </div>
+    {trend_views_html}
+    </div>
+    </details>
     </main>
     {calculator_js}
     {top_rates_js}
     {chart_switcher_js}
     {weather_js}
-</body>
-</html>
-"""
-    
+    </body>
+    </html>
+    """
     with open(html_file_name, 'w', encoding='utf-8') as f:
         f.write(full_html)
-
-# --- EXECUTION ---
-data_file = 'allData.parquet'
-
-generate_energy_dashboard(
-    file_path=data_file, 
-    html_file_name='electric_dashboard.html', 
-    elecHtml=True, 
-    top_link_url="gas_dashboard.html", 
-    top_link_text="Switch to Gas Dashboard", 
+    # --- EXECUTION ---
+    data_file = 'allData.parquet'
+    generate_energy_dashboard(
+    file_path=data_file,
+    html_file_name='electric_dashboard.html',
+    elecHtml=True,
+    top_link_url="gas_dashboard.html",
+    top_link_text="Switch to Gas Dashboard",
     threshold_rate=0.0869
-)
-
-generate_energy_dashboard(
-    file_path=data_file, 
-    html_file_name="gas_dashboard.html", 
-    elecHtml=False, 
-    top_link_url="electric_dashboard.html", 
-    top_link_text="Switch to Electric Dashboard", 
+    )
+    generate_energy_dashboard(
+    file_path=data_file,
+    html_file_name='gas_dashboard.html',
+    elecHtml=False,
+    top_link_url="electric_dashboard.html",
+    top_link_text="Switch to Electric Dashboard",
     threshold_rate=2.99
-)
+    )
