@@ -1079,9 +1079,9 @@ body {
             * This is a free open-source project. Rates are automated and may contain errors. Always verify data on official provider websites.
         </p>
         
+        {top_rates_section_html}
         {market_pulse_html}
         {calculator_html}
-        {top_rates_section_html}
         
         <h2 class="section-title">Market Leaderboard</h2>
         <div class="leaderboard-cards">
