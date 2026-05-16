@@ -607,55 +607,109 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
 
     # --- 6. MARKET PULSE ENGINE ---
     this_month = datetime.now().month
-    market_pulse_cards = []
+    today_dt = today_df['Date'].max()
     
-    # Utilities in today's data
+    timeframes = {
+        '6mo': 180,
+        '1y': 365,
+        '3y': 365*3,
+        '5y': 365*5
+    }
+    
+    pulse_data = {}
     util_today = today_df.groupby('Utility')['rate'].min().to_dict()
     
-    # Historical distribution for this month
-    hist_month = filtered_df[filtered_df['Date'].dt.month == this_month]
-    
-    for util, today_min in util_today.items():
-        hist_util = hist_month[hist_month['Utility'] == util]['rate']
-        if len(hist_util) > 5:
-            # Calculate percentile (lower is better for consumer)
-            percentile = (hist_util < today_min).mean() * 100
+    for timeframe_id, days in timeframes.items():
+        cutoff = today_dt - pd.Timedelta(days=days)
+        # Filter for this month within the timeframe
+        hist_mask = (filtered_df['Date'] >= cutoff) & (filtered_df['Date'].dt.month == this_month)
+        hist_tf = filtered_df[hist_mask]
+        
+        for util, today_min in util_today.items():
+            if util not in pulse_data: pulse_data[util] = {}
             
-            if percentile < 15:
-                status, color, icon = "Strong Signal", "var(--accent)", "🟢"
-                advice = "Rates are near historical lows for this month. Excellent time to lock in a 12-24 month term."
-            elif percentile < 35:
-                status, color, icon = "Good Value", "var(--accent)", "🟢"
-                advice = "Rates are below average. A good time to switch if your current contract is expiring."
-            elif percentile < 65:
-                status, color, icon = "Neutral", "var(--warn)", "🟡"
-                advice = "Rates are at typical seasonal levels. Consider a shorter 6-month term to stay flexible."
-            else:
-                status, color, icon = "Wait if Possible", "#b91c1c", "🔴"
-                advice = "Rates are currently higher than usual for this month. If possible, wait for a seasonal dip."
+            hist_util = hist_tf[hist_tf['Utility'] == util]['rate']
+            if len(hist_util) > 5:
+                percentile = (hist_util < today_min).mean() * 100
                 
-            market_pulse_cards.append(f"""
-                <div class="stat-card" style="border-left: 4px solid {color}; text-align: left;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <span class="stat-label">{util} Pulse</span>
-                        <span style="font-size: 0.8em; font-weight: 800; color: {color};">{status}</span>
-                    </div>
-                    <div style="font-size: 1.1em; font-weight: 700; margin-bottom: 4px;">{icon} {percentile:.0f}th Percentile</div>
-                    <div style="font-size: 0.75em; color: var(--muted); line-height: 1.3;">{advice}</div>
-                </div>
-            """)
+                if percentile < 15:
+                    status, color, icon = "Strong Signal", "#16a34a", "🟢"
+                    advice = "Rates are near historical lows for this period. Excellent time to lock in a 12-24 month term."
+                elif percentile < 35:
+                    status, color, icon = "Good Value", "#16a34a", "🟢"
+                    advice = "Rates are below average for this period. A good time to switch if your contract is expiring."
+                elif percentile < 65:
+                    status, color, icon = "Neutral", "#d97706", "🟡"
+                    advice = "Rates are at typical levels for this period. Consider a shorter 6-month term to stay flexible."
+                else:
+                    status, color, icon = "Wait if Possible", "#b91c1c", "🔴"
+                    advice = "Rates are currently higher than usual for this period. If possible, wait for a seasonal dip."
+                
+                pulse_data[util][timeframe_id] = {
+                    'percentile': round(percentile),
+                    'status': status,
+                    'color': color,
+                    'icon': icon,
+                    'advice': advice
+                }
+
+    pulse_data_json = json.dumps(pulse_data)
 
     market_pulse_html = f"""
         <section class="card" style="padding: 0; overflow: hidden;">
-            <div style="background: #f1f5f9; padding: 12px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+            <div style="background: #f1f5f9; padding: 12px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
                 <h2 style="margin: 0; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);">Market Pulse: Is now a good time to switch?</h2>
-                <span style="font-size: 0.7em; font-weight: 700; color: var(--muted);">Based on 5Y Historical Data</span>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 0.7em; font-weight: 700; color: var(--muted);">TIMELINE:</span>
+                    <select id="pulse-timeline" style="padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border); font-size: 0.75em; font-weight: 700; color: var(--text);">
+                        <option value="6mo">Last 6 Months</option>
+                        <option value="1y" selected>Last 1 Year</option>
+                        <option value="3y">Last 3 Years</option>
+                        <option value="5y">Last 5 Years</option>
+                    </select>
+                </div>
             </div>
-            <div class="hero-stats" style="padding: 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; justify-content: stretch;">
-                {"".join(market_pulse_cards)}
+            <div id="market-pulse-grid" class="hero-stats" style="padding: 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; justify-content: stretch;">
+                <!-- JavaScript will populate cards here -->
             </div>
         </section>
-    """ if market_pulse_cards else ""
+    """ if pulse_data else ""
+
+    pulse_js = f"""
+<script>
+(function() {{
+    const PULSE_DATA = {pulse_data_json};
+    const grid = document.getElementById('market-pulse-grid');
+    const select = document.getElementById('pulse-timeline');
+    
+    function renderPulse(timeframe) {{
+        if (!grid) return;
+        let html = '';
+        for (const [util, tfData] of Object.entries(PULSE_DATA)) {{
+            const data = tfData[timeframe];
+            if (!data) continue;
+            
+            html += `
+                <div class="stat-card" style="border-left: 4px solid ${{data.color}}; text-align: left;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span class="stat-label">${{util}} Pulse</span>
+                        <span style="font-size: 0.8em; font-weight: 800; color: ${{data.color}};">${{data.status}}</span>
+                    </div>
+                    <div style="font-size: 1.1em; font-weight: 700; margin-bottom: 4px;">${{data.icon}} ${{data.percentile}}th Percentile</div>
+                    <div style="font-size: 0.75em; color: var(--muted); line-height: 1.3;">${{data.advice}}</div>
+                </div>
+            `;
+        }}
+        grid.innerHTML = html || '<p style="grid-column: 1/-1; text-align: center; color: var(--muted); font-size: 0.9em; padding: 20px;">Insufficient historical data for this timeline.</p>';
+    }}
+    
+    if (select) {{
+        select.addEventListener('change', (e) => renderPulse(e.target.value));
+        renderPulse('1y');
+    }}
+}})();
+</script>
+"""
 
     # --- 7. ASSEMBLE FINAL HTML ---
     dashboard_title = "Electric Dashboard" if elecHtml else "Gas Dashboard"
@@ -1237,6 +1291,7 @@ body {
     {top_rates_js}
     {chart_switcher_js}
     {weather_js}
+    {pulse_js}
     </body>
     </html>
     """
