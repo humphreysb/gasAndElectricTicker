@@ -569,11 +569,11 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
     hero_section = f"""
         <header class="hero">
             <div class="hero-content">
-                <div class="hero-badge">{icon} Ohio {dashboard_title.split()[0]} Market</div>
-                <h1>Transparency for Ohio Energy Choice</h1>
+                <div class="hero-badge">{icon} Ohio {dashboard_title.split()[0]} Market (Experimental)</div>
+                <h1>Explore Energy Options</h1>
                 <p class="hero-lead">
-                    We track the <strong>Apples to Apples</strong> marketplace daily, filtering out the "fine print" to show you only the most 
-                    honest, fixed-rate plans with no hidden fees or cancellation penalties.
+                    This free community tool tracks the <strong>Apples to Apples</strong> marketplace daily, attempting to filter out complex "fine print" 
+                    to highlight more straightforward, fixed-rate plans. <strong>Data is automated and not guaranteed.</strong>
                 </p>
                 <div class="hero-stats">
                     <div class="stat-card">
@@ -1023,6 +1023,9 @@ body {
     {hero_section}
 
     <main class="container">
+        <p style="margin-top: -24px; margin-bottom: 32px; font-size: 0.85em; font-style: italic; color: #94a3b8; text-align: center;">
+            * This is a free open-source project. Rates are automated and may contain errors. Always verify data on official provider websites.
+        </p>
         {calculator_html}
         {top_rates_section_html}
         
