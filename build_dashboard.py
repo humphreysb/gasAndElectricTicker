@@ -81,9 +81,14 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
         (df['electric'] == elecHtml) &
         (df['Fixed Rate'] == True) &
         (df['intro. price'] == False) &
-        (df['Term. Length'] >= 6) &
-        (df['Early Term. Fee'] == 0) &
-        (df['Monthly Fee'] == 0)
+        (
+            (df['Supplier'] == 'Utility') | 
+            (
+                (df['Term. Length'] >= 6) &
+                (df['Early Term. Fee'] == 0) &
+                (df['Monthly Fee'] == 0)
+            )
+        )
     )
     filtered_df = df[base_mask].copy()
     
