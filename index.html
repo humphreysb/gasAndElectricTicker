@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ohio Energy Tracker | Consumer Guide</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #0f172a;
+            --muted: #64748b;
+            --border: #e2e8f0;
+            --accent: #16a34a;
+            --accent-fade: #f0fdf4;
+            --primary: #2563eb;
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            margin: 0;
+            -webkit-font-smoothing: antialiased;
+        }
+        .topnav {
+            position: sticky; top: 0; z-index: 100;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px); border-bottom: 1px solid var(--border);
+        }
+        .topnav-inner {
+            max-width: 1000px; margin: 0 auto;
+            padding: 12px 24px; display: flex; justify-content: space-between; align-items: center;
+        }
+        .brand { font-weight: 800; font-size: 1.1em; letter-spacing: -0.02em; }
+        .hero {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            color: white; padding: 80px 24px; text-align: center;
+        }
+        .hero-content { max-width: 800px; margin: 0 auto; }
+        .hero h1 { font-size: 3em; font-weight: 800; margin: 0 0 20px; letter-spacing: -0.04em; }
+        .hero p { font-size: 1.25em; color: #94a3b8; margin-bottom: 40px; }
+        .cta-group { display: flex; gap: 16px; justify-content: center; }
+        .btn {
+            padding: 14px 28px; border-radius: 12px; font-weight: 700; text-decoration: none;
+            transition: all 0.2s; font-size: 1em;
+        }
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-primary:hover { background: #15803d; transform: translateY(-2px); }
+        .btn-secondary { background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2); }
+        .btn-secondary:hover { background: rgba(255,255,255,0.2); }
+
+        .container { max-width: 900px; margin: 0 auto; padding: 60px 24px; }
+        .guide-section { margin-bottom: 80px; }
+        .guide-section h2 { font-size: 2em; font-weight: 800; margin-bottom: 24px; letter-spacing: -0.02em; }
+        .card {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 20px; padding: 32px; box-shadow: var(--shadow);
+            margin-bottom: 24px;
+        }
+        .step { display: flex; gap: 24px; margin-bottom: 32px; }
+        .step-num {
+            background: var(--accent-fade); color: var(--accent);
+            width: 40px; height: 40px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800; flex-shrink: 0;
+        }
+        .highlight { color: var(--accent); font-weight: 700; }
+        .bill-example {
+            background: #f1f5f9; border: 2px dashed #cbd5e1;
+            padding: 20px; border-radius: 12px; font-family: monospace;
+            font-size: 0.9em; color: #475569;
+        }
+        footer { text-align: center; padding: 40px; color: var(--muted); font-size: 0.9em; border-top: 1px solid var(--border); }
+
+        @media (max-width: 640px) {
+            .hero h1 { font-size: 2.2em; }
+            .cta-group { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="topnav">
+        <div class="topnav-inner">
+            <span class="brand">Ohio Energy Tracker</span>
+        </div>
+    </nav>
+
+    <header class="hero">
+        <div class="hero-content">
+            <h1>Explore your options.</h1>
+            <p>Most Ohioans don't realize they can choose their energy supplier. This free, open-source project tracks the daily market to help you find competitive rates—filtering out common "fine print" to make comparison easier.</p>
+            <div class="cta-group">
+                <a href="electric_dashboard.html" class="btn btn-primary">⚡ View Electric Rates</a>
+                <a href="gas_dashboard.html" class="btn btn-primary">🔥 View Gas Rates</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <section class="guide-section">
+            <h2>Why does Ohio let me choose?</h2>
+            <div class="card">
+                <p>Since 2001, Ohio has had a <strong>deregulated energy market</strong>. This means your local utility company (like AEP or Columbia Gas) is responsible for <em>delivering</em> the energy, but you can choose who <em>supplies</em> it.</p>
+                <p>Think of it like your phone: The utility company owns the "wires," but you get to choose the "service provider." By switching suppliers, you can often lock in a lower fixed rate and save hundreds of dollars per year.</p>
+            </div>
+        </section>
+
+        <section class="guide-section">
+            <h2>How do I find my current rate?</h2>
+            <p>Before you switch, you need to know what you're paying now. Grab your most recent bill and look for these sections:</p>
+            
+            <div class="step">
+                <div class="step-num">1</div>
+                <div>
+                    <strong>Look for "Supply" or "Generation"</strong>
+                    <p>Your bill is split into two parts: <em>Delivery/Distribution</em> (which you can't change) and <em>Supply/Generation</em> (which you can).</p>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-num">2</div>
+                <div>
+                    <strong>Find the Cents or Dollars</strong>
+                    <p>For <span class="highlight">Electricity</span>, look for a rate in <strong>cents per kWh</strong> (e.g., 7.5¢ or $0.075).</p>
+                    <p>For <span class="highlight">Natural Gas</span>, look for a rate in <strong>dollars per MCF or CCF</strong> (e.g., $4.50/MCF).</p>
+                </div>
+            </div>
+
+            <div class="bill-example">
+                [EXCERPT FROM TYPICAL BILL]<br>
+                Supply Charges .................... $45.20<br>
+                Usage: 600 kWh @ <span class="highlight">0.07533</span><br>
+                Current Supplier: [Utility Default]
+            </div>
+        </section>
+
+        <section class="guide-section">
+            <h2>Why use this tool?</h2>
+            <div class="card">
+                <p>The official state website ("Apples to Apples") is comprehensive, but can be overwhelming with teaser rates and complex fee structures. This tool is an automated assistant that tries to surface the most straightforward offers by filtering for:</p>
+                <ul>
+                    <li>Fixed-rate plans (avoiding monthly price spikes)</li>
+                    <li>Plans with no monthly service fees</li>
+                    <li>Zero cancellation penalties</li>
+                    <li>Minimum 6-month terms</li>
+                </ul>
+                <p><strong>Important Note:</strong> This is a free, automated open-source project. While we strive for accuracy, data errors or processing mistakes can happen. <span class="highlight">Always verify the final rate and terms on the supplier's official website before signing any contract.</span></p>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 Ohio Energy Tracker | Data sourced daily from Energy Choice Ohio</p>
+    </footer>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                const swPath = window.location.pathname.includes('gasAndElectricTicker') 
+                    ? '/gasAndElectricTicker/sw.js' 
+                    : './sw.js';
+                navigator.serviceWorker.register(swPath);
+            });
+        }
+    </script>
+</body>
+</html>

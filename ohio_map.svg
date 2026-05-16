@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" class="ohio-map">
+  <!-- Simplified Ohio Shape -->
+  <path d="M120 40 L380 40 L440 100 L440 400 L250 460 L60 400 L60 100 Z" fill="none" stroke="#e2e8f0" stroke-width="2"/>
+  
+  <!-- FirstEnergy: Toledo Edison (Northwest) - Provider ID 3 -->
+  <path d="M60 100 L200 100 L200 180 L60 180 Z" class="map-region" data-provider="3" title="Toledo Edison"/>
+  
+  <!-- FirstEnergy: Illuminating Co (Northeast Coast) - Provider ID 6 -->
+  <path d="M300 40 L440 100 L440 150 L300 150 Z" class="map-region" data-provider="6" title="The Illuminating Co"/>
+  
+  <!-- FirstEnergy: Ohio Edison (Northeast/Central) - Provider ID 7 -->
+  <path d="M200 100 L300 40 L300 150 L440 150 L440 250 L320 250 L320 180 L200 180 Z" class="map-region" data-provider="7" title="Ohio Edison"/>
+
+  <!-- AES Ohio (West Central) - Provider ID 9 -->
+  <path d="M60 180 L200 180 L200 320 L60 320 Z" class="map-region" data-provider="9" title="AES Ohio"/>
+
+  <!-- Duke Energy (Southwest) - Provider ID 4 -->
+  <path d="M60 320 L200 320 L200 420 L120 450 L60 400 Z" class="map-region" data-provider="4" title="Duke Energy"/>
+
+  <!-- AEP Ohio (Central/Southeastern/Scattered) - Provider ID 2 -->
+  <path d="M200 180 L320 180 L320 250 L440 250 L440 400 L250 460 L200 420 Z" class="map-region" data-provider="2" title="AEP Ohio"/>
+
+  <!-- Text Labels -->
+  <text x="130" y="140" class="map-label">Toledo</text>
+  <text x="370" y="100" class="map-label">Cleveland</text>
+  <text x="260" y="240" class="map-label">Columbus</text>
+  <text x="130" y="250" class="map-label">Dayton</text>
+  <text x="130" y="380" class="map-label">Cincy</text>
+</svg>
