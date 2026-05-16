@@ -70,7 +70,7 @@ def _bbb_pill_html(cleaned_supplier):
 try:
     from providers import elec, gas
 except ImportError:
-    elec = {9:'AES Power', 2:'AEP', 4:'Duke', 7:'Ohio Edison', 6:'Ilumminating Co', 3:'Toledo Edison'}
+    elec = {9:'AES Power', 2:'AEP', 4:'Duke', 7:'Ohio Edison', 6:'Illuminating Co', 3:'Toledo Edison'}
     gas = {1:'Enbridge-Dominion', 11:'Centerpoint', 10:'Duke', 8:'Columbia'}
 
 def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url, top_link_text, threshold_rate):
@@ -328,6 +328,11 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
 
     # Yearly: bar chart (small number of points)
     fig_yearly = go.Figure()
+    
+    # Identify all years present to ensure consistent axis
+    all_years = sorted(set(yearly_summary['Year'].unique()) | set(eia_yearly['Year'].unique()) if not eia_yearly.empty else set(yearly_summary['Year'].unique()))
+    year_labels = [str(y) for y in all_years]
+
     fig_yearly.add_trace(go.Bar(
         x=yearly_summary['Year'].astype(str), y=yearly_summary['avg'],
         name=f'Avg ({unit})', marker=dict(color='#1a2233'),
@@ -342,7 +347,7 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
             name='Ohio residential avg (EIA)', marker=dict(color='#3b82f6'),
         ))
     fig_yearly.update_yaxes(title_text=f'Rate ({unit})')
-    fig_yearly.update_xaxes(title_text='Year')
+    fig_yearly.update_xaxes(title_text='Year', type='category', categoryorder='array', categoryarray=year_labels)
     fig_yearly.update_layout(barmode='group')
     _style_chart(fig_yearly, 420)
 
@@ -509,32 +514,36 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
                        .sort_values('rate')
         )
         unique_terms = sorted({int(t) for t in today_dedup['Term. Length'].unique()})
-        top_rates_buckets = {'all': []}
-        for t in unique_terms:
-            top_rates_buckets[str(t)] = []
+        unique_utils = sorted(today_dedup['Utility'].unique())
+        
+        top_rates_data = []
         for _, row in today_dedup.iterrows():
             rating, url = _bbb_entry(row['SupplierClean'])
-            entry = {
+            top_rates_data.append({
                 'utility': row['Utility'],
                 'supplier': row['SupplierClean'],
                 'term': int(row['Term. Length']),
                 'rate': float(row['rate']),
                 'bbb': rating,
                 'bbb_url': url,
-            }
-            if len(top_rates_buckets['all']) < 5:
-                top_rates_buckets['all'].append(entry)
-            tkey = str(entry['term'])
-            if tkey in top_rates_buckets and len(top_rates_buckets[tkey]) < 5:
-                top_rates_buckets[tkey].append(entry)
-        top_rates_payload = {'unit': unit, 'data': top_rates_buckets}
+            })
+            
+        top_rates_payload = {
+            'unit': unit, 
+            'all_data': top_rates_data
+        }
+        
         top_rates_term_options = '<option value="all">All terms</option>' + "".join(
             f'<option value="{t}">{t} months</option>' for t in unique_terms
         )
+        top_rates_util_options = '<option value="all">All utilities</option>' + "".join(
+            f'<option value="{u}">{u}</option>' for u in unique_utils
+        )
         top_rates_available = True
     else:
-        top_rates_payload = {'unit': unit, 'data': {'all': []}}
+        top_rates_payload = {'unit': unit, 'all_data': []}
         top_rates_term_options = '<option value="all">All terms</option>'
+        top_rates_util_options = '<option value="all">All utilities</option>'
         top_rates_available = False
     top_rates_payload_json = json.dumps(top_rates_payload)
 
@@ -542,9 +551,12 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
         top_rates_section_html = f"""
         <section class="card top-rates-card">
             <h2 class="section-title" style="margin-top:0">Top 5 Rates Right Now</h2>
-            <div class="top-rates-controls">
-                <label>Filter by term
-                    <select id="top-rates-term-select">{top_rates_term_options}</select>
+            <div class="top-rates-controls" style="display: flex; gap: 16px; flex-wrap: wrap;">
+                <label style="flex: 1; min-width: 150px;">Filter by utility
+                    <select id="top-rates-util-select" style="width: 100%;">{top_rates_util_options}</select>
+                </label>
+                <label style="flex: 1; min-width: 150px;">Filter by term
+                    <select id="top-rates-term-select" style="width: 100%;">{top_rates_term_options}</select>
                 </label>
             </div>
             <table class="top-rates-table">
@@ -561,9 +573,10 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
     top_rates_js = (
         "<script>\n(function() {\n"
         "  var PAYLOAD = " + top_rates_payload_json + ";\n"
-        "  var sel = document.getElementById('top-rates-term-select');\n"
+        "  var termSel = document.getElementById('top-rates-term-select');\n"
+        "  var utilSel = document.getElementById('top-rates-util-select');\n"
         "  var tbody = document.getElementById('top-rates-tbody');\n"
-        "  if (!sel || !tbody) return;\n"
+        "  if (!termSel || !utilSel || !tbody) return;\n"
         "  function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }\n"
         "  function bbbPill(supplier, rating, url) {\n"
         "    var href = url || ('https://www.google.com/search?q=' + encodeURIComponent(supplier + ' BBB rating'));\n"
@@ -575,10 +588,15 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
         "    return '<a class=\"bbb-pill bbb-unknown\" href=\"' + href + '\" target=\"_blank\" rel=\"noopener\" title=\"No rating cached — click to look up\">—</a>';\n"
         "  }\n"
         "  function render() {\n"
-        "    var term = sel.value;\n"
-        "    var rows = (PAYLOAD.data[term] || []);\n"
+        "    var term = termSel.value;\n"
+        "    var util = utilSel.value;\n"
+        "    var rows = PAYLOAD.all_data.filter(function(r) {\n"
+        "      var matchTerm = (term === 'all' || r.term.toString() === term);\n"
+        "      var matchUtil = (util === 'all' || r.utility === util);\n"
+        "      return matchTerm && matchUtil;\n"
+        "    }).slice(0, 5);\n"
         "    if (rows.length === 0) {\n"
-        "      tbody.innerHTML = '<tr><td colspan=\"6\" class=\"empty-cell\">No data for that term.</td></tr>';\n"
+        "      tbody.innerHTML = '<tr><td colspan=\"6\" class=\"empty-cell\">No data matching filters.</td></tr>';\n"
         "      return;\n"
         "    }\n"
         "    tbody.innerHTML = rows.map(function(r, i) {\n"
@@ -592,14 +610,18 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
         "      '</tr>';\n"
         "    }).join('');\n"
         "  }\n"
-        "  var KEY = 'gAndETicker_top_rates_term_' + (document.body.getAttribute('data-dashboard') || 'x');\n"
-        "  var saved = localStorage.getItem(KEY);\n"
-        "  if (saved && [].some.call(sel.options, function(o) { return o.value === saved; })) {\n"
-        "    sel.value = saved;\n"
-        "  }\n"
-        "  sel.addEventListener('change', function() {\n"
-        "    localStorage.setItem(KEY, sel.value);\n"
-        "    render();\n"
+        "  var PREFIX = 'gAndETicker_top_rates_';\n"
+        "  var DASH = (document.body.getAttribute('data-dashboard') || 'x');\n"
+        "  [termSel, utilSel].forEach(function(s) {\n"
+        "    var key = PREFIX + s.id + '_' + DASH;\n"
+        "    var saved = localStorage.getItem(key);\n"
+        "    if (saved && [].some.call(s.options, function(o) { return o.value === saved; })) {\n"
+        "      s.value = saved;\n"
+        "    }\n"
+        "    s.addEventListener('change', function() {\n"
+        "      localStorage.setItem(key, s.value);\n"
+        "      render();\n"
+        "    });\n"
         "  });\n"
         "  render();\n"
         "})();\n</script>"
@@ -871,26 +893,7 @@ body {
 }
 
 .util-card table { width: 100%; border-collapse: collapse; }
-.map-container {
-  display: flex; gap: 32px; align-items: stretch; margin-bottom: 24px;
-}
-.ohio-map-box {
-  flex: 0 0 320px; background: white; border-radius: 16px;
-  padding: 16px; border: 1px solid var(--border); box-shadow: var(--shadow-sm);
-  display: flex; flex-direction: column; align-items: center;
-}
-.ohio-map { width: 100%; height: auto; max-width: 280px; }
-.map-region {
-  fill: #f8fafc; stroke: #cbd5e1; stroke-width: 1.5; cursor: pointer;
-  transition: all 0.2s;
-}
-.map-region:hover { fill: var(--primary-fade); stroke: var(--primary); }
-.map-region.active { fill: var(--primary); stroke: #1e3a8a; }
-.map-label {
-  font-size: 14px; font-weight: 700; fill: #94a3b8; pointer-events: none;
-  text-anchor: middle;
-}
-.calculator-card { flex: 1; margin-bottom: 0 !important; }
+.calculator-card { max-width: 800px; margin: 0 auto 32px auto; }
 .util-card th, .util-card td {
   padding: 10px 8px; text-align: left; font-size: 0.9em;
   border-bottom: 1px solid #f1f5f9;
@@ -969,6 +972,11 @@ body {
             <div class="calc-results" id="calc-results">
                 <p class="calc-prompt">Enter your details above to see savings.</p>
             </div>
+            <div id="calc-share-container" style="display:none; margin-top: 16px; border-top: 1px solid var(--border); padding-top: 16px; text-align: right;">
+                <button id="btn-share" class="btn" style="background: var(--primary); color: white; padding: 8px 16px; font-size: 0.85em; cursor: pointer; border: none; box-shadow: var(--shadow-sm);">
+                    🔗 Share My Savings
+                </button>
+            </div>
         </section>
 """
 
@@ -1025,49 +1033,33 @@ body {
         "      html += '</ul>';\n"
         "    }\n"
         "    results.innerHTML = html;\n"
+        "    $('calc-share-container').style.display = (monthlyDiff > 0) ? 'block' : 'none';\n"
         "  }\n"
         "  document.addEventListener('DOMContentLoaded', function() {\n"
         "    loadInputs();\n"
         "    IDS.forEach(function(id) {\n"
         "      var el = $(id);\n"
         "      el.addEventListener('input', render);\n"
-        "      el.addEventListener('change', function() {\n"
-        "        if (id === 'calc-util') updateMapHighlight(el.value);\n"
-        "        render();\n"
-        "      });\n"
+        "      el.addEventListener('change', render);\n"
         "    });\n"
         "\n"
-        "    // Map Interaction Logic\n"
-        "    var regions = document.querySelectorAll('.map-region');\n"
-        "    var utilSelect = $('calc-util');\n"
-        "    \n"
-        "    function updateMapHighlight(selectedUtil) {\n"
-        "      regions.forEach(function(r) {\n"
-        "        var title = r.getAttribute('title');\n"
-        "        // Handle fuzzy matching for AEP/AES brands\n"
-        "        var isMatch = selectedUtil.includes(title) || title.includes(selectedUtil);\n"
-        "        r.classList.toggle('active', isMatch);\n"
-        "      });\n"
-        "    }\n"
-        "\n"
-        "    regions.forEach(function(region) {\n"
-        "      region.addEventListener('click', function() {\n"
-        "        var targetUtil = region.getAttribute('title');\n"
-        "        // Find the matching option in the dropdown\n"
-        "        for (var i = 0; i < utilSelect.options.length; i++) {\n"
-        "          var opt = utilSelect.options[i].value;\n"
-        "          if (opt.includes(targetUtil) || targetUtil.includes(opt)) {\n"
-        "            utilSelect.value = opt;\n"
-        "            updateMapHighlight(opt);\n"
-        "            render();\n"
-        "            break;\n"
-        "          }\n"
-        "        }\n"
-        "      });\n"
+        "    // Share Logic\n"
+        "    $('btn-share').addEventListener('click', function() {\n"
+        "      var util = $('calc-utility').value;\n"
+        "      var myRate = parseFloat($('calc-current-rate').value);\n"
+        "      var usage = parseFloat($('calc-usage').value);\n"
+        "      var minRate = DATA.min_by_util[util];\n"
+        "      var yearlyDiff = (myRate - minRate) * usage * 12;\n"
+        "      var msg = 'I could save ' + fmtMoney(yearlyDiff) + ' / year on my ' + DATA.dashboard_type + ' bill! Check your savings at the Ohio Energy Tracker: ' + window.location.href;\n"
+        "      if (navigator.share) {\n"
+        "        navigator.share({ title: 'Ohio Energy Tracker', text: msg, url: window.location.href }).catch(function(e) { console.error('Error sharing:', e); });\n"
+        "      } else {\n"
+        "        navigator.clipboard.writeText(msg).then(function() {\n"
+        "          alert('Sharing message copied to clipboard!');\n"
+        "        });\n"
+        "      }\n"
         "    });\n"
-        "    \n"
-        "    // Initial Map State\n"
-        "    updateMapHighlight(utilSelect.value);\n"
+        "\n"
         "    render();\n"
         "  });\n"
         "})();\n</script>"
@@ -1189,32 +1181,16 @@ body {
         "})();\n</script>"
     )
     
-    map_html = """
-    <div class="ohio-map-box">
-    <span style="font-size: 0.7em; font-weight: 700; color: var(--muted); text-transform: uppercase; margin-bottom: 12px;">Quick Select Your Region</span>
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" class="ohio-map">
-    <path d="M120 40 L380 40 L440 100 L440 400 L250 460 L60 400 L60 100 Z" fill="none" stroke="#e2e8f0" stroke-width="2"/>
-    <path d="M60 100 L200 100 L200 180 L60 180 Z" class="map-region" data-provider="3" title="Toledo Edison"/>
-    <path d="M300 40 L440 100 L440 150 L300 150 Z" class="map-region" data-provider="6" title="The Illuminating Co"/>
-    <path d="M200 100 L300 40 L300 150 L440 150 L440 250 L320 250 L320 180 L200 180 Z" class="map-region" data-provider="7" title="Ohio Edison"/>
-    <path d="M60 180 L200 180 L200 320 L60 320 Z" class="map-region" data-provider="9" title="AES Ohio"/>
-    <path d="M60 320 L200 320 L200 420 L120 450 L60 400 Z" class="map-region" data-provider="4" title="Duke Energy"/>
-    <path d="M200 180 L320 180 L320 250 L440 250 L440 400 L250 460 L200 420 Z" class="map-region" data-provider="2" title="AEP Ohio"/>
-    <text x="130" y="140" class="map-label">Toledo</text>
-    <text x="370" y="100" class="map-label">Cleveland</text>
-    <text x="260" y="240" class="map-label">Columbus</text>
-    <text x="130" y="250" class="map-label">Dayton</text>
-    <text x="130" y="380" class="map-label">Cincy</text>
-    </svg>
-    <p style="font-size: 0.65em; color: var(--muted); margin-top: 12px; text-align: center;">Click your region to filter rates</p>
-    </div>
-    """
     full_html = f"""<!DOCTYPE html>
     <html lang="en">
     <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Ohio {dashboard_title}</title>
+    <meta property="og:title" content="Ohio {dashboard_title}">
+    <meta property="og:description" content="Track daily energy rates in Ohio and find the best fixed-rate plans.">
+    <meta property="og:type" content="website">
+    <meta name="description" content="Free, open-source tracker for Ohio energy rates. Compare utility supply charges daily.">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0f172a">
     <link rel="apple-touch-icon" href="icon-192.png">
@@ -1252,10 +1228,9 @@ body {
     </p>
     {top_rates_section_html}
     {market_pulse_html}
-    <div class="map-container">
-    {map_html}
+    
     {calculator_html}
-    </div>
+
     <h2 class="section-title">Market Leaderboard</h2>
     <div class="leaderboard-cards">
     {"".join(table_sections)}
@@ -1297,21 +1272,24 @@ body {
     """
     with open(html_file_name, 'w', encoding='utf-8') as f:
         f.write(full_html)
-    # --- EXECUTION ---
-    data_file = 'allData.parquet'
-    generate_energy_dashboard(
-    file_path=data_file,
-    html_file_name='electric_dashboard.html',
-    elecHtml=True,
-    top_link_url="gas_dashboard.html",
-    top_link_text="Switch to Gas Dashboard",
+
+# --- EXECUTION ---
+data_file = 'allData.parquet'
+
+generate_energy_dashboard(
+    file_path=data_file, 
+    html_file_name='electric_dashboard.html', 
+    elecHtml=True, 
+    top_link_url="gas_dashboard.html", 
+    top_link_text="Switch to Gas Dashboard", 
     threshold_rate=0.0869
-    )
-    generate_energy_dashboard(
-    file_path=data_file,
-    html_file_name='gas_dashboard.html',
-    elecHtml=False,
-    top_link_url="electric_dashboard.html",
-    top_link_text="Switch to Electric Dashboard",
+)
+
+generate_energy_dashboard(
+    file_path=data_file, 
+    html_file_name='gas_dashboard.html', 
+    elecHtml=False, 
+    top_link_url="electric_dashboard.html", 
+    top_link_text="Switch to Electric Dashboard", 
     threshold_rate=2.99
-    )
+)
