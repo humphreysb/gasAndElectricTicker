@@ -562,6 +562,32 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
 
     # --- 7. ASSEMBLE FINAL HTML ---
     dashboard_title = "Electric Dashboard" if elecHtml else "Gas Dashboard"
+    other_dash = "Gas" if elecHtml else "Electric"
+    other_url = "gas_dashboard.html" if elecHtml else "electric_dashboard.html"
+    icon = "⚡" if elecHtml else "🔥"
+    
+    hero_section = f"""
+        <header class="hero">
+            <div class="hero-content">
+                <div class="hero-badge">{icon} Ohio {dashboard_title.split()[0]} Market</div>
+                <h1>Transparency for Ohio Energy Choice</h1>
+                <p class="hero-lead">
+                    We track the <strong>Apples to Apples</strong> marketplace daily, filtering out the "fine print" to show you only the most 
+                    honest, fixed-rate plans with no hidden fees or cancellation penalties.
+                </p>
+                <div class="hero-stats">
+                    <div class="stat-card">
+                        <span class="stat-value">{current_date_str}</span>
+                        <span class="stat-label">Last Updated</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value">{len(today_df)}</span>
+                        <span class="stat-label">Verified Plans</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+    """
 
     # --- Savings calculator data + UI ---
     usage_unit_label = "kWh" if elecHtml else "MCF"
@@ -583,217 +609,169 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
 
     styles_block = """
 :root {
-  --bg: #f6f7f9;
+  --bg: #f8fafc;
   --card: #ffffff;
-  --text: #15202b;
-  --muted: #677078;
-  --border: #e4e7eb;
-  --accent: #15803d;
-  --accent-fade: #ecfdf5;
-  --warn: #b45309;
+  --text: #0f172a;
+  --muted: #64748b;
+  --border: #e2e8f0;
+  --accent: #16a34a;
+  --accent-fade: #f0fdf4;
+  --warn: #d97706;
   --warn-fade: #fffbeb;
-  --shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.06);
+  --primary: #2563eb;
+  --primary-fade: #eff6ff;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background: var(--bg);
   color: var(--text);
-  font-size: 15px;
-  line-height: 1.5;
+  font-size: 16px;
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
 }
 .topnav {
-  position: sticky; top: 0; z-index: 10;
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: saturate(180%) blur(8px);
-  -webkit-backdrop-filter: saturate(180%) blur(8px);
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
 }
 .topnav-inner {
-  max-width: 1100px; margin: 0 auto;
+  max-width: 1200px; margin: 0 auto;
   padding: 12px 24px;
-  display: flex; align-items: center; gap: 16px;
+  display: flex; align-items: center; justify-content: space-between;
 }
-.brand { font-weight: 700; font-size: 1.02em; color: var(--text); letter-spacing: -0.01em; }
-.tabs { display: flex; gap: 4px; margin-left: auto; }
+.brand { font-weight: 800; font-size: 1.1em; color: var(--text); letter-spacing: -0.02em; }
+.tabs { display: flex; gap: 8px; }
 .tab {
-  text-decoration: none; padding: 7px 14px; border-radius: 6px;
-  color: var(--muted); font-weight: 600; font-size: 0.92em;
-  transition: background 0.15s, color 0.15s;
+  text-decoration: none; padding: 8px 16px; border-radius: 8px;
+  color: var(--muted); font-weight: 600; font-size: 0.9em;
+  transition: all 0.2s;
 }
 .tab:hover { background: var(--bg); color: var(--text); }
-.tab-active { background: var(--accent-fade); color: var(--accent); }
-.container { max-width: 1100px; margin: 0 auto; padding: 28px 24px 64px; }
-.page-header { margin-bottom: 24px; }
-.page-header h1 {
-  margin: 0 0 4px;
-  font-size: 1.65em; font-weight: 700; letter-spacing: -0.015em;
-  color: var(--text);
+.tab-active { background: var(--text); color: white; }
+
+.hero {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  color: white; padding: 60px 24px; text-align: center;
+  margin-bottom: 40px;
 }
-.subtitle { margin: 0; color: var(--muted); font-size: 0.92em; }
+.hero-content { max-width: 800px; margin: 0 auto; }
+.hero-badge {
+  display: inline-block; background: rgba(255,255,255,0.1);
+  padding: 4px 12px; border-radius: 20px; font-size: 0.85em;
+  font-weight: 600; margin-bottom: 16px; border: 1px solid rgba(255,255,255,0.2);
+}
+.hero h1 {
+  font-size: 2.75em; font-weight: 800; margin: 0 0 16px;
+  letter-spacing: -0.03em; line-height: 1.1;
+}
+.hero-lead { font-size: 1.15em; color: #94a3b8; margin-bottom: 32px; }
+.hero-stats { display: flex; justify-content: center; gap: 24px; }
+.stat-card {
+  background: rgba(255,255,255,0.05); padding: 12px 24px;
+  border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);
+}
+.stat-value { display: block; font-size: 1.2em; font-weight: 700; color: white; }
+.stat-label { font-size: 0.75em; color: #64748b; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; }
+
+.container { max-width: 1200px; margin: 0 auto; padding: 0 24px 80px; }
 .card {
   background: var(--card); border: 1px solid var(--border);
-  border-radius: 10px; padding: 20px 24px;
-  margin-bottom: 20px; box-shadow: var(--shadow);
+  border-radius: 16px; padding: 24px;
+  margin-bottom: 24px; box-shadow: var(--shadow-sm);
 }
 .section-title {
-  margin: 24px 0 12px;
-  font-size: 0.74em; font-weight: 700;
-  text-transform: uppercase; letter-spacing: 0.7px;
+  margin: 40px 0 16px;
+  font-size: 0.85em; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.1em;
   color: var(--muted);
 }
-.section-title:first-child { margin-top: 0; }
-.leaderboard-cards { display: flex; flex-direction: column; gap: 10px; margin-bottom: 8px; }
+.leaderboard-cards {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
+  gap: 20px; margin-bottom: 24px;
+}
+@media (max-width: 1100px) { .leaderboard-cards { grid-template-columns: 1fr; } }
+
 .util-card {
   background: var(--card); border: 1px solid var(--border);
-  border-radius: 10px; padding: 14px 20px; box-shadow: var(--shadow);
+  border-radius: 16px; padding: 20px; box-shadow: var(--shadow-sm);
+  display: flex; flex-direction: column;
 }
 .util-card-head {
-  display: flex; align-items: center; gap: 10px;
-  margin-bottom: 6px; flex-wrap: wrap;
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px; border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
 }
-.util-card-head h3 { margin: 0; font-size: 1.02em; font-weight: 700; color: var(--text); }
+.util-card-head h3 { margin: 0; font-size: 1.2em; font-weight: 700; }
+
 .pill {
-  display: inline-block; padding: 3px 10px;
-  border-radius: 999px; font-size: 0.72em; font-weight: 600; letter-spacing: 0.2px;
+  display: inline-block; padding: 4px 12px;
+  border-radius: 20px; font-size: 0.75em; font-weight: 600;
 }
-.pill-rate { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
+.pill-rate { background: var(--primary-fade); color: var(--primary); }
 .badge-90d-low {
   background: var(--accent); color: white;
-  padding: 3px 10px; border-radius: 999px;
-  font-size: 0.68em; font-weight: 700; letter-spacing: 0.5px;
+  padding: 4px 12px; border-radius: 20px;
+  font-size: 0.7em; font-weight: 700;
 }
-.util-card table { width: 100%; border-collapse: collapse; margin: 0; }
+
+.util-card table { width: 100%; border-collapse: collapse; }
 .util-card th, .util-card td {
-  border: none; border-bottom: 1px solid var(--border);
-  padding: 7px 4px; text-align: left; font-size: 0.92em;
+  padding: 10px 8px; text-align: left; font-size: 0.9em;
+  border-bottom: 1px solid #f1f5f9;
 }
-.util-card tr:last-child td { border-bottom: none; }
 .util-card th {
   color: var(--muted); font-weight: 600;
-  font-size: 0.7em; text-transform: uppercase; letter-spacing: 0.5px;
+  font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.05em;
 }
 .min-rate { color: var(--accent); font-weight: 700; }
-.threshold-met { font-style: normal; text-decoration: none; }
-.empty-state {
-  text-align: center; color: var(--warn);
-  background: var(--warn-fade); border: 1px dashed #f5d27a;
-  border-radius: 10px; padding: 20px; margin: 0 0 20px;
-}
-.calc-form {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
-}
-.calc-form label {
-  display: flex; flex-direction: column;
-  font-weight: 700; color: var(--muted);
-  font-size: 0.7em; text-transform: uppercase; letter-spacing: 0.5px;
-}
+
+.calc-form { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+.calc-form label { font-size: 0.75em; font-weight: 700; color: var(--muted); text-transform: uppercase; }
 .calc-form input, .calc-form select {
-  margin-top: 6px; padding: 9px 11px;
-  border: 1px solid var(--border); border-radius: 6px;
-  font-size: 0.95em; font-family: inherit; color: var(--text); background: var(--card);
-  transition: border-color 0.15s, box-shadow 0.15s;
+  width: 100%; margin-top: 8px; padding: 12px;
+  border: 1px solid var(--border); border-radius: 10px;
+  background: #f8fafc; font-size: 1em;
 }
-.calc-form input:focus, .calc-form select:focus {
-  outline: none; border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-fade);
-}
-.calc-results { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
-.calc-prompt { color: var(--muted); font-style: italic; margin: 0; }
-.calc-win { color: var(--accent); margin: 0 0 6px; font-weight: 700; font-size: 1em; }
-.calc-neutral { color: var(--warn); margin: 0; font-weight: 600; }
-.calc-results ul { font-size: 1.02em; line-height: 1.7; margin: 0; padding-left: 22px; }
-.calc-results ul li b { color: var(--text); }
+
 .chart-section {
   background: var(--card); border: 1px solid var(--border);
-  border-radius: 10px; box-shadow: var(--shadow);
-  margin-bottom: 24px; overflow: hidden;
+  border-radius: 16px; margin-bottom: 24px; overflow: hidden;
+  box-shadow: var(--shadow-sm);
 }
 .chart-section summary {
-  padding: 14px 22px; cursor: pointer; list-style: none;
-  display: flex; align-items: center; justify-content: space-between;
-  font-weight: 700; font-size: 0.74em; color: var(--muted);
-  text-transform: uppercase; letter-spacing: 0.7px;
-  user-select: none;
+  padding: 20px 24px; cursor: pointer; font-weight: 700;
+  color: var(--text); display: flex; justify-content: space-between;
+  background: #f8fafc; border-bottom: 1px solid var(--border);
 }
-.chart-section summary::-webkit-details-marker { display: none; }
-.chart-section summary::after {
-  content: "▾"; display: inline-block; color: var(--muted);
-  transition: transform 0.2s ease;
-}
-.chart-section[open] summary::after { transform: rotate(180deg); }
-.chart-body { padding: 4px 22px 22px; }
-.chart-controls {
-  display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap;
-  margin: 4px 0 14px;
-}
-.chart-controls label {
-  display: flex; flex-direction: column;
-  font-weight: 700; color: var(--muted);
-  font-size: 0.7em; text-transform: uppercase; letter-spacing: 0.5px;
-}
+.chart-body { padding: 24px; }
 .chart-controls select {
-  margin-top: 6px; padding: 8px 12px;
-  border: 1px solid var(--border); border-radius: 6px;
-  font-size: 0.92em; font-family: inherit; color: var(--text); background: var(--card);
-  min-width: 280px;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  padding: 10px 16px; border-radius: 10px; border: 1px solid var(--border);
+  font-weight: 600; min-width: 300px;
 }
-.chart-controls select:focus {
-  outline: none; border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-fade);
-}
-.chart-view[hidden], .trend-view[hidden] { display: none !important; }
-.top-rates-controls { display: flex; align-items: flex-end; gap: 16px; margin: 0 0 12px; flex-wrap: wrap; }
-.top-rates-controls label { display: flex; flex-direction: column; font-weight: 700; color: var(--muted); font-size: 0.7em; text-transform: uppercase; letter-spacing: 0.5px; }
-.top-rates-controls select {
-  margin-top: 6px; padding: 8px 12px;
-  border: 1px solid var(--border); border-radius: 6px;
-  font-size: 0.92em; font-family: inherit; color: var(--text); background: var(--card);
-  min-width: 220px;
-}
-.top-rates-controls select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-fade); }
-.top-rates-table { width: 100%; border-collapse: collapse; margin: 0; }
-.top-rates-table th, .top-rates-table td {
-  border: none; border-bottom: 1px solid var(--border);
-  padding: 8px 6px; text-align: left; font-size: 0.93em;
-}
-.top-rates-table tr:last-child td { border-bottom: none; }
-.top-rates-table th {
-  color: var(--muted); font-weight: 600;
-  font-size: 0.7em; text-transform: uppercase; letter-spacing: 0.5px;
-}
-.top-rates-table .rank-cell { font-weight: 700; color: var(--muted); width: 32px; }
-.top-rates-table .rate-cell { color: var(--accent); font-weight: 700; font-variant-numeric: tabular-nums; }
-.top-rates-table .empty-cell { text-align: center; color: var(--muted); padding: 16px; font-style: italic; }
+
+.top-rates-table { width: 100%; border-collapse: collapse; }
+.top-rates-table th, .top-rates-table td { padding: 12px; border-bottom: 1px solid var(--border); }
+.top-rates-table th { font-size: 0.75em; color: var(--muted); text-transform: uppercase; }
+.rank-cell { font-weight: 800; color: var(--muted); width: 40px; }
+.rate-cell { color: var(--accent); font-weight: 800; font-size: 1.1em; }
+
 .bbb-pill {
-  display: inline-block; padding: 2px 9px;
-  border-radius: 999px; font-size: 0.78em; font-weight: 700;
-  text-decoration: none; letter-spacing: 0.3px;
-  min-width: 28px; text-align: center;
+  display: inline-block; padding: 2px 10px; border-radius: 6px;
+  font-weight: 700; font-size: 0.8em; text-decoration: none;
 }
-.bbb-pill.bbb-good { background: var(--accent-fade); color: var(--accent); border: 1px solid #b6e8c8; }
-.bbb-pill.bbb-mid  { background: var(--warn-fade); color: var(--warn); border: 1px solid #f5d27a; }
-.bbb-pill.bbb-poor { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
-.bbb-pill.bbb-unknown { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
-.bbb-pill:hover { filter: brightness(0.97); }
-.data-warning {
-  background: var(--warn-fade); border: 1px solid #f5d27a;
-  border-radius: 8px; padding: 10px 14px; margin: 0 0 14px;
-  color: var(--warn); font-size: 0.88em; line-height: 1.5;
-}
-.data-warning.data-warning-ok {
-  background: var(--accent-fade); border-color: #b6e8c8; color: var(--accent);
-}
-@media (max-width: 640px) {
+.bbb-good { background: #dcfce7; color: #166534; }
+.bbb-poor { background: #fee2e2; color: #991b1b; }
+.bbb-mid { background: #fef3c7; color: #92400e; }
+
+@media (max-width: 768px) {
+  .hero h1 { font-size: 2em; }
   .calc-form { grid-template-columns: 1fr; }
-  .topnav-inner { padding: 10px 16px; gap: 12px; }
-  .brand { font-size: 0.95em; }
-  .container { padding: 22px 16px 48px; }
-  .util-card { padding: 12px 14px; }
-  .page-header h1 { font-size: 1.4em; }
+  .hero-stats { flex-direction: column; gap: 12px; }
 }
 """
 
@@ -1010,7 +988,10 @@ body {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{dashboard_title}</title>
+    <title>Ohio {dashboard_title}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>{styles_block}</style>
 </head>
 <body data-dashboard="{dash_type}">
@@ -1023,19 +1004,20 @@ body {
             </div>
         </div>
     </nav>
+    
+    {hero_section}
+
     <main class="container">
-        <header class="page-header">
-            <h1>{dashboard_title}</h1>
-            <p class="subtitle">Ohio energy choice rates as of {current_date_str}</p>
-        </header>
         {calculator_html}
         {top_rates_section_html}
-        <h2 class="section-title">Current Market Leaderboard</h2>
+        
+        <h2 class="section-title">Market Leaderboard</h2>
         <div class="leaderboard-cards">
             {"".join(table_sections)}
         </div>
+        
         <details class="chart-section" open>
-            <summary>Historical Trends</summary>
+            <summary>Market Dynamics</summary>
             <div class="chart-body">
                 <div class="chart-controls">
                     <label>View
@@ -1047,6 +1029,7 @@ body {
                 {chart_views_html}
             </div>
         </details>
+        
         <details class="chart-section">
             <summary>Long-term Trends &amp; Seasonality</summary>
             <div class="chart-body">
