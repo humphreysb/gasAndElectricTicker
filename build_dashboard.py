@@ -969,6 +969,11 @@ body {
             <div class="calc-results" id="calc-results">
                 <p class="calc-prompt">Enter your details above to see savings.</p>
             </div>
+            <div id="calc-share-container" style="display:none; margin-top: 16px; border-top: 1px solid var(--border); padding-top: 16px; text-align: right;">
+                <button id="btn-share" class="btn" style="background: var(--primary); color: white; padding: 8px 16px; font-size: 0.85em; cursor: pointer; border: none; box-shadow: var(--shadow-sm);">
+                    🔗 Share My Savings
+                </button>
+            </div>
         </section>
 """
 
@@ -1025,6 +1030,7 @@ body {
         "      html += '</ul>';\n"
         "    }\n"
         "    results.innerHTML = html;\n"
+        "    $('calc-share-container').style.display = (monthlyDiff > 0) ? 'block' : 'none';\n"
         "  }\n"
         "  document.addEventListener('DOMContentLoaded', function() {\n"
         "    loadInputs();\n"
@@ -1035,6 +1041,23 @@ body {
         "        if (id === 'calc-util') updateMapHighlight(el.value);\n"
         "        render();\n"
         "      });\n"
+        "    });\n"
+        "\n"
+        "    // Share Logic\n"
+        "    $('btn-share').addEventListener('click', function() {\n"
+        "      var util = $('calc-util').value;\n"
+        "      var myRate = parseFloat($('calc-current-rate').value);\n"
+        "      var usage = parseFloat($('calc-usage').value);\n"
+        "      var minRate = DATA.min_by_util[util];\n"
+        "      var yearlyDiff = (myRate - minRate) * usage * 12;\n"
+        "      var msg = 'I could save ' + fmtMoney(yearlyDiff) + ' / year on my ' + DATA.dashboard_type + ' bill! Check your savings at the Ohio Energy Tracker: ' + window.location.href;\n"
+        "      if (navigator.share) {\n"
+        "        navigator.share({ title: 'Ohio Energy Tracker', text: msg, url: window.location.href }).catch(function(e) { console.error('Error sharing:', e); });\n"
+        "      } else {\n"
+        "        navigator.clipboard.writeText(msg).then(function() {\n"
+        "          alert('Sharing message copied to clipboard!');\n"
+        "        });\n"
+        "      }\n"
         "    });\n"
         "\n"
         "    // Map Interaction Logic\n"
@@ -1215,6 +1238,10 @@ body {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Ohio {dashboard_title}</title>
+    <meta property="og:title" content="Ohio {dashboard_title}">
+    <meta property="og:description" content="Track daily energy rates in Ohio and find the best fixed-rate plans.">
+    <meta property="og:type" content="website">
+    <meta name="description" content="Free, open-source tracker for Ohio energy rates. Compare utility supply charges daily.">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0f172a">
     <link rel="apple-touch-icon" href="icon-192.png">
