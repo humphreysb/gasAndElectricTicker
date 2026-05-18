@@ -605,62 +605,76 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
         "})();\n</script>"
     )
 
-    # --- 6. MARKET PULSE ENGINE ---
-    this_month = datetime.now().month
+    # --- 6. RATE REALITY CHECK ENGINE ---
+    # Premise: comparing today's best market rate against the historical *minimum*
+    # (the best deal that was actually available) is what consumers actually want
+    # to know. A rate at the 30th percentile of last year still might be 20%+
+    # worse than what was available 6 months ago — and that's the truth a
+    # consumer needs to make a switching decision.
     today_dt = today_df['Date'].max()
-    
+
     timeframes = {
         '6mo': 180,
         '1y': 365,
         '3y': 365*3,
         '5y': 365*5
     }
-    
+
     pulse_data = {}
     util_today = today_df.groupby('Utility')['rate'].min().to_dict()
-    
+
+    rate_fmt = (lambda r: f"{r*100:.2f}¢/kWh") if elecHtml else (lambda r: f"${r:.2f}/MCF")
+
     for timeframe_id, days in timeframes.items():
         cutoff = today_dt - pd.Timedelta(days=days)
-        # Filter for this month within the timeframe
-        hist_mask = (filtered_df['Date'] >= cutoff) & (filtered_df['Date'].dt.month == this_month)
-        hist_tf = filtered_df[hist_mask]
-        
+        hist_tf = filtered_df[filtered_df['Date'] >= cutoff]
+
         for util, today_min in util_today.items():
             if util not in pulse_data: pulse_data[util] = {}
-            
+
             hist_util = hist_tf[hist_tf['Utility'] == util]['rate']
-            if len(hist_util) > 5:
-                percentile = (hist_util < today_min).mean() * 100
-                
-                if percentile < 15:
-                    status, color, icon = "Strong Signal", "#16a34a", "🟢"
-                    advice = "Rates are near historical lows for this period. Excellent time to lock in a 12-24 month term."
-                elif percentile < 35:
-                    status, color, icon = "Good Value", "#16a34a", "🟢"
-                    advice = "Rates are below average for this period. A good time to switch if your contract is expiring."
-                elif percentile < 65:
-                    status, color, icon = "Neutral", "#d97706", "🟡"
-                    advice = "Rates are at typical levels for this period. Consider a shorter 6-month term to stay flexible."
-                else:
-                    status, color, icon = "Wait if Possible", "#b91c1c", "🔴"
-                    advice = "Rates are currently higher than usual for this period. If possible, wait for a seasonal dip."
-                
-                pulse_data[util][timeframe_id] = {
-                    'percentile': round(percentile),
-                    'status': status,
-                    'color': color,
-                    'icon': icon,
-                    'advice': advice
-                }
+            if len(hist_util) < 30:
+                continue
+
+            hist_low = float(hist_util.min())
+            hist_median = float(hist_util.median())
+            # premium = how much more today costs vs the historical low
+            premium_pct = (today_min / hist_low - 1) * 100 if hist_low > 0 else 0
+
+            window_label = {'6mo': '6 months', '1y': 'year', '3y': '3 years', '5y': '5 years'}[timeframe_id]
+
+            if premium_pct < 5:
+                status, color, icon = f"Near {window_label} low", "#16a34a", "🟢"
+                advice = f"Today's best rate is within 5% of the lowest available in the past {window_label}. Strong moment to lock in a longer term."
+            elif premium_pct < 15:
+                status, color, icon = "Slight premium", "#65a30d", "🟢"
+                advice = f"Reasonable rate, but {premium_pct:.0f}% above the best deal seen in the past {window_label}. Worth locking in if your contract is expiring."
+            elif premium_pct < 30:
+                status, color, icon = "Notable premium", "#d97706", "🟡"
+                advice = f"You'd pay {premium_pct:.0f}% more than the best rate seen in the past {window_label} ({rate_fmt(hist_low)}). If your contract isn't expiring soon, wait."
+            else:
+                status, color, icon = "Poor timing", "#b91c1c", "🔴"
+                advice = f"Today's best is {premium_pct:.0f}% above the {window_label} low of {rate_fmt(hist_low)}. Switching now locks in elevated pricing — wait if your current contract allows."
+
+            pulse_data[util][timeframe_id] = {
+                'today_rate': rate_fmt(today_min),
+                'hist_low': rate_fmt(hist_low),
+                'hist_median': rate_fmt(hist_median),
+                'premium_pct': round(premium_pct),
+                'status': status,
+                'color': color,
+                'icon': icon,
+                'advice': advice
+            }
 
     pulse_data_json = json.dumps(pulse_data)
 
     market_pulse_html = f"""
         <section class="card" style="padding: 0; overflow: hidden;">
             <div style="background: #f1f5f9; padding: 12px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-                <h2 style="margin: 0; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);">Market Pulse: Is now a good time to switch?</h2>
+                <h2 style="margin: 0; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);">Rate Reality Check: How does today's best deal stack up?</h2>
                 <div style="display: flex; align-items: center; gap: 8px;">
-                    <span style="font-size: 0.7em; font-weight: 700; color: var(--muted);">TIMELINE:</span>
+                    <span style="font-size: 0.7em; font-weight: 700; color: var(--muted);">COMPARE AGAINST:</span>
                     <select id="pulse-timeline" style="padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border); font-size: 0.75em; font-weight: 700; color: var(--text);">
                         <option value="6mo">Last 6 Months</option>
                         <option value="1y" selected>Last 1 Year</option>
@@ -669,8 +683,11 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
                     </select>
                 </div>
             </div>
-            <div id="market-pulse-grid" class="hero-stats" style="padding: 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; justify-content: stretch;">
+            <div id="market-pulse-grid" class="hero-stats" style="padding: 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; justify-content: stretch;">
                 <!-- JavaScript will populate cards here -->
+            </div>
+            <div style="background: #f8fafc; padding: 8px 24px; border-top: 1px solid var(--border); font-size: 0.7em; color: var(--muted); text-align: center;">
+                Each card compares today's best market rate to the lowest rate actually available in the selected window. A "premium" means you'd pay that much more than the best deal recently seen.
             </div>
         </section>
     """ if pulse_data else ""
@@ -689,14 +706,16 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
             const data = tfData[timeframe];
             if (!data) continue;
             
+            const premiumLabel = data.premium_pct <= 0 ? 'At the low' : `+${{data.premium_pct}}% above low`;
             html += `
                 <div class="stat-card" style="border-left: 4px solid ${{data.color}}; text-align: left;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <span class="stat-label">${{util}} Pulse</span>
-                        <span style="font-size: 0.8em; font-weight: 800; color: ${{data.color}};">${{data.status}}</span>
+                        <span class="stat-label">${{util}}</span>
+                        <span style="font-size: 0.8em; font-weight: 800; color: ${{data.color}};">${{data.icon}} ${{data.status}}</span>
                     </div>
-                    <div style="font-size: 1.1em; font-weight: 700; margin-bottom: 4px;">${{data.icon}} ${{data.percentile}}th Percentile</div>
-                    <div style="font-size: 0.75em; color: var(--muted); line-height: 1.3;">${{data.advice}}</div>
+                    <div style="font-size: 1.15em; font-weight: 800; margin-bottom: 2px;">${{data.today_rate}} <span style="font-size: 0.7em; font-weight: 700; color: ${{data.color}};">(${{premiumLabel}})</span></div>
+                    <div style="font-size: 0.7em; color: var(--muted); margin-bottom: 8px;">Window low: ${{data.hist_low}} · median: ${{data.hist_median}}</div>
+                    <div style="font-size: 0.75em; color: var(--text); line-height: 1.4;">${{data.advice}}</div>
                 </div>
             `;
         }}
