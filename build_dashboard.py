@@ -1324,21 +1324,21 @@ body {
     """
     with open(html_file_name, 'w', encoding='utf-8') as f:
         f.write(full_html)
-    # --- EXECUTION ---
-    data_file = 'allData.parquet'
-    generate_energy_dashboard(
+# --- EXECUTION ---
+data_file = 'allData.parquet'
+generate_energy_dashboard(
     file_path=data_file,
     html_file_name='electric_dashboard.html',
     elecHtml=True,
     top_link_url="gas_dashboard.html",
     top_link_text="Switch to Gas Dashboard",
     threshold_rate=0.0869
-    )
-    generate_energy_dashboard(
+)
+generate_energy_dashboard(
     file_path=data_file,
     html_file_name='gas_dashboard.html',
     elecHtml=False,
     top_link_url="electric_dashboard.html",
     top_link_text="Switch to Electric Dashboard",
     threshold_rate=2.99
-    )
+)
