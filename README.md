@@ -3,8 +3,8 @@
 An autonomous data pipeline and interactive dashboard for tracking retail natural gas and electricity rates across Ohio. This project scrapes the official **Energy Choice Ohio** "Apples to Apples" marketplace daily to surface the most competitive, consumer-friendly plans.
 
 ### 📊 Live Dashboards
-*   **[Electric Dashboard](https://jgearinger.github.io/gasAndElectricTicker/electric_dashboard.html)**
-*   **[Gas Dashboard](https://jgearinger.github.io/gasAndElectricTicker/gas_dashboard.html)**
+*   **[Electric Dashboard](https://humphreysb.github.io/gasAndElectricTicker/electric_dashboard.html)**
+*   **[Gas Dashboard](https://humphreysb.github.io/gasAndElectricTicker/gas_dashboard.html)**
 
 ---
 
