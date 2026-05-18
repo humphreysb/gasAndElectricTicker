@@ -618,33 +618,33 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
     
     pulse_data = {}
     util_today = today_df.groupby('Utility')['rate'].min().to_dict()
-    
+
     for timeframe_id, days in timeframes.items():
         cutoff = today_dt - pd.Timedelta(days=days)
-        # Filter for this month within the timeframe
-        hist_mask = (filtered_df['Date'] >= cutoff) & (filtered_df['Date'].dt.month == this_month)
-        hist_tf = filtered_df[hist_mask]
-        
+        # Compare today's rate against ALL dates in the window (no same-month filter)
+        # so the percentile reflects absolute rate levels, not just seasonal position
+        hist_tf = filtered_df[filtered_df['Date'] >= cutoff]
+
         for util, today_min in util_today.items():
             if util not in pulse_data: pulse_data[util] = {}
-            
+
             hist_util = hist_tf[hist_tf['Utility'] == util]['rate']
             if len(hist_util) > 5:
                 percentile = (hist_util < today_min).mean() * 100
-                
-                if percentile < 15:
-                    status, color, icon = "Strong Signal", "#16a34a", "🟢"
-                    advice = "Rates are near historical lows for this period. Excellent time to lock in a 12-24 month term."
-                elif percentile < 35:
-                    status, color, icon = "Good Value", "#16a34a", "🟢"
-                    advice = "Rates are below average for this period. A good time to switch if your contract is expiring."
-                elif percentile < 65:
-                    status, color, icon = "Neutral", "#d97706", "🟡"
-                    advice = "Rates are at typical levels for this period. Consider a shorter 6-month term to stay flexible."
+
+                if percentile < 20:
+                    status, color, icon = "Near Multi-Year Low", "#16a34a", "🟢"
+                    advice = "Today's best rate is cheaper than it's been ~80% of the time over this window. Strong time to lock in a longer-term plan."
+                elif percentile < 40:
+                    status, color, icon = "Below Average", "#16a34a", "🟢"
+                    advice = "Rates are below their historical average for this window. Reasonable time to lock in a plan."
+                elif percentile < 60:
+                    status, color, icon = "Near Average", "#d97706", "🟡"
+                    advice = "Rates are near their historical average. A 6-month term keeps your options open while you wait."
                 else:
-                    status, color, icon = "Wait if Possible", "#b91c1c", "🔴"
-                    advice = "Rates are currently higher than usual for this period. If possible, wait for a seasonal dip."
-                
+                    status, color, icon = "Above Average", "#b91c1c", "🔴"
+                    advice = "Rates are higher than usual for this window. Consider a shorter term or waiting if your current contract allows it."
+
                 pulse_data[util][timeframe_id] = {
                     'percentile': round(percentile),
                     'status': status,
@@ -658,9 +658,9 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
     market_pulse_html = f"""
         <section class="card" style="padding: 0; overflow: hidden;">
             <div style="background: #f1f5f9; padding: 12px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-                <h2 style="margin: 0; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);">Market Pulse: Is now a good time to switch?</h2>
+                <h2 style="margin: 0; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);">Rate History Pulse: Where do today's rates rank?</h2>
                 <div style="display: flex; align-items: center; gap: 8px;">
-                    <span style="font-size: 0.7em; font-weight: 700; color: var(--muted);">TIMELINE:</span>
+                    <span style="font-size: 0.7em; font-weight: 700; color: var(--muted);">COMPARE AGAINST:</span>
                     <select id="pulse-timeline" style="padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border); font-size: 0.75em; font-weight: 700; color: var(--text);">
                         <option value="6mo">Last 6 Months</option>
                         <option value="1y" selected>Last 1 Year</option>
@@ -692,10 +692,10 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
             html += `
                 <div class="stat-card" style="border-left: 4px solid ${{data.color}}; text-align: left;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <span class="stat-label">${{util}} Pulse</span>
+                        <span class="stat-label">${{util}}</span>
                         <span style="font-size: 0.8em; font-weight: 800; color: ${{data.color}};">${{data.status}}</span>
                     </div>
-                    <div style="font-size: 1.1em; font-weight: 700; margin-bottom: 4px;">${{data.icon}} ${{data.percentile}}th Percentile</div>
+                    <div style="font-size: 1.1em; font-weight: 700; margin-bottom: 4px;">${{data.icon}} ${{data.percentile}}th percentile of selected window</div>
                     <div style="font-size: 0.75em; color: var(--muted); line-height: 1.3;">${{data.advice}}</div>
                 </div>
             `;
