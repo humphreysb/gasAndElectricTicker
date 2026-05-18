@@ -890,26 +890,7 @@ body {
 }
 
 .util-card table { width: 100%; border-collapse: collapse; }
-.map-container {
-  display: flex; gap: 32px; align-items: stretch; margin-bottom: 24px;
-}
-.ohio-map-box {
-  flex: 0 0 320px; background: white; border-radius: 16px;
-  padding: 16px; border: 1px solid var(--border); box-shadow: var(--shadow-sm);
-  display: flex; flex-direction: column; align-items: center;
-}
-.ohio-map { width: 100%; height: auto; max-width: 280px; }
-.map-region {
-  fill: #f8fafc; stroke: #cbd5e1; stroke-width: 1.5; cursor: pointer;
-  transition: all 0.2s;
-}
-.map-region:hover { fill: var(--primary-fade); stroke: var(--primary); }
-.map-region.active { fill: var(--primary); stroke: #1e3a8a; }
-.map-label {
-  font-size: 14px; font-weight: 700; fill: #94a3b8; pointer-events: none;
-  text-anchor: middle;
-}
-.calculator-card { flex: 1; margin-bottom: 0 !important; }
+.calculator-card { margin-bottom: 0 !important; }
 .util-card th, .util-card td {
   padding: 10px 8px; text-align: left; font-size: 0.9em;
   border-bottom: 1px solid #f1f5f9;
@@ -1057,14 +1038,13 @@ body {
         "      var el = $(id);\n"
         "      el.addEventListener('input', render);\n"
         "      el.addEventListener('change', function() {\n"
-        "        if (id === 'calc-util') updateMapHighlight(el.value);\n"
         "        render();\n"
         "      });\n"
         "    });\n"
         "\n"
         "    // Share Logic\n"
         "    $('btn-share').addEventListener('click', function() {\n"
-        "      var util = $('calc-util').value;\n"
+        "      var util = $('calc-utility').value;\n"
         "      var myRate = parseFloat($('calc-current-rate').value);\n"
         "      var usage = parseFloat($('calc-usage').value);\n"
         "      var minRate = DATA.min_by_util[util];\n"
@@ -1079,37 +1059,6 @@ body {
         "      }\n"
         "    });\n"
         "\n"
-        "    // Map Interaction Logic\n"
-        "    var regions = document.querySelectorAll('.map-region');\n"
-        "    var utilSelect = $('calc-util');\n"
-        "    \n"
-        "    function updateMapHighlight(selectedUtil) {\n"
-        "      regions.forEach(function(r) {\n"
-        "        var title = r.getAttribute('title');\n"
-        "        // Handle fuzzy matching for AEP/AES brands\n"
-        "        var isMatch = selectedUtil.includes(title) || title.includes(selectedUtil);\n"
-        "        r.classList.toggle('active', isMatch);\n"
-        "      });\n"
-        "    }\n"
-        "\n"
-        "    regions.forEach(function(region) {\n"
-        "      region.addEventListener('click', function() {\n"
-        "        var targetUtil = region.getAttribute('title');\n"
-        "        // Find the matching option in the dropdown\n"
-        "        for (var i = 0; i < utilSelect.options.length; i++) {\n"
-        "          var opt = utilSelect.options[i].value;\n"
-        "          if (opt.includes(targetUtil) || targetUtil.includes(opt)) {\n"
-        "            utilSelect.value = opt;\n"
-        "            updateMapHighlight(opt);\n"
-        "            render();\n"
-        "            break;\n"
-        "          }\n"
-        "        }\n"
-        "      });\n"
-        "    });\n"
-        "    \n"
-        "    // Initial Map State\n"
-        "    updateMapHighlight(utilSelect.value);\n"
         "    render();\n"
         "  });\n"
         "})();\n</script>"
@@ -1231,26 +1180,6 @@ body {
         "})();\n</script>"
     )
     
-    map_html = """
-    <div class="ohio-map-box">
-    <span style="font-size: 0.7em; font-weight: 700; color: var(--muted); text-transform: uppercase; margin-bottom: 12px;">Quick Select Your Region</span>
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" class="ohio-map">
-    <path d="M120 40 L380 40 L440 100 L440 400 L250 460 L60 400 L60 100 Z" fill="none" stroke="#e2e8f0" stroke-width="2"/>
-    <path d="M60 100 L200 100 L200 180 L60 180 Z" class="map-region" data-provider="3" title="Toledo Edison"/>
-    <path d="M300 40 L440 100 L440 150 L300 150 Z" class="map-region" data-provider="6" title="The Illuminating Co"/>
-    <path d="M200 100 L300 40 L300 150 L440 150 L440 250 L320 250 L320 180 L200 180 Z" class="map-region" data-provider="7" title="Ohio Edison"/>
-    <path d="M60 180 L200 180 L200 320 L60 320 Z" class="map-region" data-provider="9" title="AES Ohio"/>
-    <path d="M60 320 L200 320 L200 420 L120 450 L60 400 Z" class="map-region" data-provider="4" title="Duke Energy"/>
-    <path d="M200 180 L320 180 L320 250 L440 250 L440 400 L250 460 L200 420 Z" class="map-region" data-provider="2" title="AEP Ohio"/>
-    <text x="130" y="140" class="map-label">Toledo</text>
-    <text x="370" y="100" class="map-label">Cleveland</text>
-    <text x="260" y="240" class="map-label">Columbus</text>
-    <text x="130" y="250" class="map-label">Dayton</text>
-    <text x="130" y="380" class="map-label">Cincy</text>
-    </svg>
-    <p style="font-size: 0.65em; color: var(--muted); margin-top: 12px; text-align: center;">Click your region to filter rates</p>
-    </div>
-    """
     full_html = f"""<!DOCTYPE html>
     <html lang="en">
     <head>
@@ -1298,10 +1227,7 @@ body {
     </p>
     {top_rates_section_html}
     {market_pulse_html}
-    <div class="map-container">
-    {map_html}
     {calculator_html}
-    </div>
     <h2 class="section-title">Market Leaderboard</h2>
     <div class="leaderboard-cards">
     {"".join(table_sections)}
