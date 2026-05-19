@@ -30,12 +30,11 @@ Highest similarity to Ohio. Both fuels, state-run sites, structured comparison t
 - **Utilities covered:** Electric (8): PECO, PPL, Duquesne, Met-Ed, Penelec, Penn Power, West Penn Power, UGI. Gas (6): UGI, Columbia Gas of PA, PECO Gas, Peoples, National Fuel, PGW.
 - **Notes:** Integer IDs used as `Provider` keys (e.g. 1182 for PECO). Gas rates normalized from $/Ccf to $/Mcf to match Ohio's unit. Adding PA validated the multi-state architecture end-to-end — onboarding the next state should follow the same shape: one scraper module plus four small registry entries.
 
-### 2. Maryland — **strong second**
-- **Electric:** [MarylandElectricChoice.com](https://www.marylandelectricchoice.com)
-- **Gas:** [MDGasChoice.com](https://www.mdgaschoice.com)
-- **Run by:** MD Public Service Commission
-- **Why:** Same dual-site, dual-fuel structure as PA/Ohio. Smaller utility list (cleaner mapping): **BGE, Pepco, Delmarva Power, Potomac Edison** for electric; **BGE, Washington Gas, Columbia Gas of MD** for gas.
-- **Estimated scraper effort:** Low–Medium. Some sites in this family render rates inside `<table>` elements that pandas can parse directly.
+### ~~2. Maryland~~ — ❌ **Dormant (regulatory exit, January 2025)**
+- **Sites:** [mdelectricchoice.com](https://www.mdelectricchoice.com) (run by MD PSC, replaced `marylandelectricchoice.com`) and [mdgaschoice.com](https://www.mdgaschoice.com).
+- **Status:** Comparison engines are up but **the marketplace is empty**. Every utility (BGE, Pepco, Delmarva, Potomac Edison, Choptank, SMECO on electric; BGE Gas, Washington Gas on gas) returns "Sorry, no current offers matched your search" as of May 2026.
+- **Why:** Per the MD PSC site: *"Senate Bill 1 of the 2024 Maryland General Assembly session enacted major reforms in the retail energy supply marketplace … As a result of these changes, some retail suppliers have made the business decision to no longer offer supply to residential customers."* Effective Jan 1, 2025.
+- **Decision:** Skip Maryland until the marketplace reactivates. Building a daily scraper now would burn requests for zero rows. Re-check quarterly via the [Why Fewer Offers?](https://www.mdelectricchoice.com/why-you-may-see-fewer-offers/) page.
 
 ### 3. Illinois
 - **Electric:** [PlugInIllinois.org](https://www.pluginillinois.org)
@@ -108,9 +107,9 @@ These can be revisited if/when their PUCs publish structured data, but they're n
 
 1. ~~**Architecture work (items 1–4 above)**~~ ✅ Done. Foundation is in.
 2. ~~**Pennsylvania (both fuels)**~~ ✅ Done. Multi-state model validated end-to-end.
-3. **Maryland (both fuels)** — 🟡 brief: [`MD_SCRAPER_BRIEF.md`](MD_SCRAPER_BRIEF.md). Locks in the dual-fuel pattern with a smaller utility list.
-4. **Illinois (electric, gas if scrapable)** — 🟡 brief: [`IL_SCRAPER_BRIEF.md`](IL_SCRAPER_BRIEF.md). Gas may be PDF-only on the ICC site; if so, ship electric-only and revisit.
-5. **New York (both fuels)** — 🟡 brief: [`NY_SCRAPER_BRIEF.md`](NY_SCRAPER_BRIEF.md). Single comparison site for both fuels, six EDCs — the largest utility count of any Phase 1 state.
+3. ~~**Maryland**~~ ❌ Skipped — dormant marketplace, see above. Re-check quarterly.
+4. **Illinois (electric, gas separately if scrapable)** — 🟡 brief: [`IL_SCRAPER_BRIEF.md`](IL_SCRAPER_BRIEF.md). Electric side confirmed scrapable: `icc.illinois.gov/plugin/offers?said=N` returns a server-rendered HTML table parseable by `pandas.read_html`. Gas may be PDF-only on the ICC site; if so, ship electric-only and revisit.
+5. **New York (both fuels)** — 🟡 brief: [`NY_SCRAPER_BRIEF.md`](NY_SCRAPER_BRIEF.md). Single comparison site for both fuels, six EDCs — the largest utility count of any Phase 1 state. Investigation pending.
 6. **Texas (electric)** — Phase 2. Biggest single-state audience, validates the REP-only market model (no traditional utility-supplier split).
 7. **Everything else** — once Phase 1 lands, each additional state is a contained scraper + utility-map PR.
 
