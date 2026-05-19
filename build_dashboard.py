@@ -1767,8 +1767,8 @@ body {
     <div class="topnav-inner">
     <span class="brand"><a href="index.html" style="color:inherit;text-decoration:none;">RateSavvy</a></span>
     <div class="tabs">
-    <a href="electric_dashboard.html" class="tab {elec_active}" data-tab="electric">Electric</a>
-    <a href="gas_dashboard.html" class="tab {gas_active}" data-tab="gas">Gas</a>
+    <a href="electric_dashboard.html" id="tab-link-electric" class="tab {elec_active}" data-tab="electric">Electric</a>
+    <a href="gas_dashboard.html" id="tab-link-gas" class="tab {gas_active}" data-tab="gas">Gas</a>
     </div>
     </div>
     </nav>
@@ -1885,9 +1885,32 @@ body {
 
       // Load saved selection
       var saved = loadSelection();
-      if (saved.state) stateSel.value = saved.state;
+      if (saved.state) {{
+        stateSel.value = saved.state;
+        var opt = stateSel.options[stateSel.selectedIndex];
+        if (opt) {{
+          var target = FUEL === 'gas' ? opt.getAttribute('data-gas') : opt.getAttribute('data-elec');
+          var current = window.location.pathname.split('/').pop() || 'index.html';
+          if (target && target !== current && (current.indexOf('dashboard') !== -1)) {{
+            window.location.replace(target);
+            return;
+          }}
+        }}
+      }}
       var savedUtil = (saved.utilities && saved.utilities[FUEL]) || '';
       if (savedUtil) utilSel.value = savedUtil;
+
+      function updateTabLinks() {{
+        var opt = stateSel.options[stateSel.selectedIndex];
+        if (!opt) return;
+        var elecFile = opt.getAttribute('data-elec');
+        var gasFile = opt.getAttribute('data-gas');
+        var elecTab = document.getElementById('tab-link-electric');
+        var gasTab = document.getElementById('tab-link-gas');
+        if (elecTab && elecFile) elecTab.href = elecFile;
+        if (gasTab && gasFile) gasTab.href = gasFile;
+      }}
+      updateTabLinks();
 
       function updateActiveButton(value) {{
         utilButtons.querySelectorAll('.util-btn').forEach(function(b) {{
@@ -1970,6 +1993,7 @@ body {
         var sel = loadSelection();
         sel.state = stateSel.value;
         saveSelection(sel);
+        updateTabLinks();
         // If this state has a different dashboard file for the current fuel,
         // navigate to it. (Once we have more than one state in STATE_CONFIG,
         // each option carries data-elec / data-gas attributes pointing at
