@@ -11,7 +11,7 @@ An autonomous data pipeline and interactive dashboard for tracking retail natura
 ---
 
 ### 🚀 Key Features
-*   **Daily Market Scraping:** Automatically fetches the latest rates for all major Ohio utilities (AEP, Duke, AES, FirstEnergy, Columbia Gas, etc.).
+*   **Daily Market Scraping:** Automatically fetches the latest rates for major utilities across deregulated markets. (Currently live for Ohio: AEP, Duke, AES, FirstEnergy, Columbia Gas, etc.)
 *   **Smart Filtering:** Unlike the raw marketplace, we filter for "Fair Terms" by default:
     *   **Fixed Rates Only:** No variable-rate surprises.
     *   **Zero Cancellation Fees:** Freedom to switch if a better rate appears.

@@ -1546,9 +1546,9 @@ body {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{dashboard_title} · RateSavvy</title>
     <meta property="og:title" content="{dashboard_title} · RateSavvy">
-    <meta property="og:description" content="Track daily energy rates and find the best fixed-rate plans in Ohio.">
+    <meta property="og:description" content="Daily energy rate tracking for deregulated US markets. Find the best supplier in your state.">
     <meta property="og:type" content="website">
-    <meta name="description" content="RateSavvy — daily energy rate comparison so you can lock in a better supplier. Currently covering Ohio.">
+    <meta name="description" content="RateSavvy — find the best energy supplier in your state. Daily rate tracking for deregulated US markets, starting with Ohio.">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0f172a">
     <link rel="apple-touch-icon" href="icon-192.png">
@@ -1587,7 +1587,7 @@ body {
           <p class="selection-explainer">
             Your <strong>utility company</strong> (also called the <strong>delivery company</strong>) is who runs the
             wires or pipes down your street and reads your meter — they're responsible for the lines, outages, and getting
-            power to your home. <strong>They don't have to generate the power</strong>: Ohio lets you pick a different
+            power to your home. <strong>They don't have to generate the power</strong>: deregulated states like yours let you pick a different
             supplier for the actual energy, which is where you can save money. Pick yours below to see rates tailored to your area.
           </p>
         </div>
@@ -1618,7 +1618,7 @@ body {
     {market_pulse_html}
     {calculator_html}
     <h2 class="section-title">Available Plans by Delivery Utility</h2>
-    <p class="section-subtitle">Every supplier currently offering plans through each Ohio delivery utility, sorted by contract length. The lowest rate per term is highlighted.</p>
+    <p class="section-subtitle">Every supplier currently offering plans through each delivery utility in your area, sorted by contract length. The lowest rate per term is highlighted.</p>
     <div class="leaderboard-cards">
     {"".join(table_sections)}
     </div>
@@ -1699,9 +1699,9 @@ body {
                      '<span class="util-btn-check">✓</span>' +
                    '</button>';
       }});
-      opts += '<option value="all">Compare all ' + FUEL + ' options in Ohio</option>';
+      opts += '<option value="all">Compare all ' + FUEL + ' options in your state</option>';
       btnHtml += '<button type="button" class="util-btn util-btn-all" data-value="all">' +
-                   '<span>Compare all ' + FUEL + ' options in Ohio</span>' +
+                   '<span>Compare all ' + FUEL + ' options in your state</span>' +
                    '<span class="util-btn-check">✓</span>' +
                  '</button>';
       utilSel.innerHTML = opts;
