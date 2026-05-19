@@ -1,15 +1,17 @@
-# ⚡ Ohio Energy Tracker
+# ⚡ RateSavvy
 
-An autonomous data pipeline and interactive dashboard for tracking retail natural gas and electricity rates across Ohio. This project scrapes the official **Energy Choice Ohio** "Apples to Apples" marketplace daily to surface the most competitive, consumer-friendly plans.
+> Live at **[ratesavvy.us](https://ratesavvy.us)**
+
+An autonomous data pipeline and interactive dashboard for tracking retail natural gas and electricity rates. RateSavvy scrapes deregulated-market data daily to surface the most competitive, consumer-friendly supplier plans. Currently covering Ohio (via the **Energy Choice Ohio** "Apples to Apples" marketplace), with additional states planned.
 
 ### 📊 Live Dashboards
-*   **[Electric Dashboard](https://humphreysb.github.io/gasAndElectricTicker/electric_dashboard.html)**
-*   **[Gas Dashboard](https://humphreysb.github.io/gasAndElectricTicker/gas_dashboard.html)**
+*   **[Electric Dashboard](https://ratesavvy.us/electric_dashboard.html)**
+*   **[Gas Dashboard](https://ratesavvy.us/gas_dashboard.html)**
 
 ---
 
 ### 🚀 Key Features
-*   **Daily Market Scraping:** Automatically fetches the latest rates for all major Ohio utilities (AEP, Duke, AES, FirstEnergy, Columbia Gas, etc.).
+*   **Daily Market Scraping:** Automatically fetches the latest rates for major utilities across deregulated markets. (Currently live for Ohio: AEP, Duke, AES, FirstEnergy, Columbia Gas, etc.)
 *   **Smart Filtering:** Unlike the raw marketplace, we filter for "Fair Terms" by default:
     *   **Fixed Rates Only:** No variable-rate surprises.
     *   **Zero Cancellation Fees:** Freedom to switch if a better rate appears.

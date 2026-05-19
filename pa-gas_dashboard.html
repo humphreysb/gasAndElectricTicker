@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+    <html lang="en">
+    <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Gas Dashboard · RateSavvy</title>
+    <meta property="og:title" content="Gas Dashboard · RateSavvy">
+    <meta property="og:description" content="Daily energy rate tracking for deregulated US markets. Find the best supplier in your state.">
+    <meta property="og:type" content="website">
+    <meta name="description" content="RateSavvy — find the best energy supplier in your state. Daily rate tracking for deregulated US markets, starting with Ohio.">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+:root {
+  --bg: #f8fafc;
+  --card: #ffffff;
+  --text: #0f172a;
+  --muted: #64748b;
+  --border: #e2e8f0;
+  --accent: #16a34a;
+  --accent-fade: #f0fdf4;
+  --warn: #d97706;
+  --warn-fade: #fffbeb;
+  --primary: #2563eb;
+  --primary-fade: #eff6ff;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+.topnav {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+.topnav-inner {
+  max-width: 1200px; margin: 0 auto;
+  padding: 12px 24px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.brand { font-weight: 800; font-size: 1.1em; color: var(--text); letter-spacing: -0.02em; }
+.tabs { display: flex; gap: 8px; }
+.tab {
+  text-decoration: none; padding: 8px 16px; border-radius: 8px;
+  color: var(--muted); font-weight: 600; font-size: 0.9em;
+  transition: all 0.2s;
+}
+.tab:hover { background: var(--bg); color: var(--text); }
+.tab-active { background: var(--text); color: white; }
+
+.selection-section {
+  background: white; border-bottom: 1px solid var(--border);
+  margin-top: -40px; margin-bottom: 24px;
+  position: relative; z-index: 5;
+}
+.selection-inner {
+  max-width: 1100px; margin: 0 auto; padding: 28px 24px;
+}
+.selection-header h2 {
+  margin: 0 0 8px 0; font-size: 1.5em; font-weight: 800; letter-spacing: -0.02em;
+}
+.selection-explainer {
+  margin: 0 0 24px 0; color: var(--muted); font-size: 0.9em; line-height: 1.55;
+  max-width: 780px;
+}
+.selection-explainer strong { color: var(--text); font-weight: 700; }
+.selection-block {
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 14px; padding: 20px 22px;
+  box-shadow: var(--shadow-sm);
+}
+.selection-field-row {
+  display: flex; flex-direction: column; gap: 8px;
+  margin-bottom: 16px;
+}
+.selection-field-row:last-of-type { margin-bottom: 0; }
+.selection-label {
+  font-size: 0.7em; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--muted); font-weight: 700;
+}
+.selection-field-state select {
+  padding: 8px 12px; border: 1.5px solid var(--border);
+  border-radius: 8px; font-size: 0.95em; font-weight: 600;
+  background: white; color: var(--text); cursor: pointer;
+  min-width: 180px; max-width: 220px;
+}
+.utility-buttons {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px; margin-top: 4px;
+}
+.util-btn {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; padding: 14px 16px; background: white;
+  border: 1.5px solid var(--border); border-radius: 10px;
+  cursor: pointer; font-family: inherit; font-size: 0.95em;
+  font-weight: 600; color: var(--text); text-align: left;
+  transition: all 0.15s; width: 100%;
+}
+.util-btn:hover {
+  border-color: var(--primary); background: #eff6ff;
+  transform: translateY(-1px); box-shadow: var(--shadow-sm);
+}
+.util-btn.util-btn-active {
+  border-color: var(--primary); background: #1e40af;
+  color: white;
+}
+.util-btn.util-btn-active .util-btn-check { color: white; }
+.util-btn-check {
+  font-size: 1.1em; color: var(--primary); opacity: 0;
+}
+.util-btn.util-btn-active .util-btn-check { opacity: 1; }
+.util-btn-all {
+  background: #f1f5f9; border-style: dashed;
+  grid-column: 1 / -1;
+}
+.util-btn-all:hover { border-style: solid; }
+.selection-hint {
+  margin: 16px 0 0 0; color: var(--muted); font-size: 0.85em;
+  font-style: italic;
+}
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px;
+  overflow: hidden; clip: rect(0,0,0,0);
+}
+@media (max-width: 640px) {
+  .selection-section { margin-top: -24px; }
+  .selection-inner { padding: 20px 16px; }
+  .selection-header h2 { font-size: 1.25em; }
+  .utility-buttons { grid-template-columns: 1fr; }
+}
+
+.hero {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  color: white; padding: 60px 24px; text-align: center;
+  margin-bottom: 40px;
+}
+.hero-content { max-width: 800px; margin: 0 auto; }
+.hero h1 {
+  font-size: 2.75em; font-weight: 800; margin: 0 0 16px;
+  letter-spacing: -0.03em; line-height: 1.1;
+}
+.hero-lead { font-size: 1.15em; color: #94a3b8; margin-bottom: 32px; }
+.hero-stats { display: flex; justify-content: center; gap: 24px; }
+.stat-card {
+  background: rgba(255,255,255,0.05); padding: 12px 24px;
+  border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);
+}
+.stat-value { display: block; font-size: 1.2em; font-weight: 700; color: white; }
+.stat-label { font-size: 0.75em; color: #64748b; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; }
+
+.container { max-width: 1200px; margin: 0 auto; padding: 0 24px 80px; }
+.card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 16px; padding: 24px;
+  margin-bottom: 24px; box-shadow: var(--shadow-sm);
+}
+.section-title {
+  margin: 40px 0 8px;
+  font-size: 1.4em; font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+.section-subtitle {
+  margin: 0 0 20px;
+  color: var(--muted); font-size: 0.9em;
+  max-width: 780px; line-height: 1.5;
+}
+.leaderboard-cards {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
+  gap: 20px; margin-bottom: 24px;
+}
+@media (max-width: 1100px) { .leaderboard-cards { grid-template-columns: 1fr; } }
+
+.util-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 16px; padding: 20px; box-shadow: var(--shadow-sm);
+  display: flex; flex-direction: column;
+}
+.util-card-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px; border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+}
+.util-card-head h3 { margin: 0; font-size: 1.2em; font-weight: 700; }
+
+.pill {
+  display: inline-block; padding: 4px 12px;
+  border-radius: 20px; font-size: 0.75em; font-weight: 600;
+}
+.pill-rate { background: var(--primary-fade); color: var(--primary); }
+.badge-90d-low {
+  background: var(--accent); color: white;
+  padding: 4px 12px; border-radius: 20px;
+  font-size: 0.7em; font-weight: 700;
+}
+
+.util-card table { width: 100%; border-collapse: collapse; }
+.calculator-card { margin-bottom: 0 !important; }
+.util-card th, .util-card td {
+  padding: 10px 8px; text-align: left; font-size: 0.9em;
+  border-bottom: 1px solid #f1f5f9;
+}
+.util-card th {
+  color: var(--muted); font-weight: 600;
+  font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.05em;
+}
+.min-rate { color: var(--accent); font-weight: 700; }
+
+.calc-form { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+.calc-form label { font-size: 0.75em; font-weight: 700; color: var(--muted); text-transform: uppercase; }
+.calc-form input, .calc-form select {
+  width: 100%; margin-top: 8px; padding: 12px;
+  border: 1px solid var(--border); border-radius: 10px;
+  background: #f8fafc; font-size: 1em;
+}
+
+.chart-section {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 16px; margin-bottom: 24px; overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.chart-section summary {
+  padding: 20px 24px; cursor: pointer; font-weight: 700;
+  color: var(--text); display: flex; justify-content: space-between;
+  background: #f8fafc; border-bottom: 1px solid var(--border);
+}
+.chart-body { padding: 24px; }
+.chart-controls select {
+  padding: 10px 16px; border-radius: 10px; border: 1px solid var(--border);
+  font-weight: 600; min-width: 300px;
+}
+
+.top-rates-table { width: 100%; border-collapse: collapse; }
+.top-rates-table th, .top-rates-table td { padding: 12px; border-bottom: 1px solid var(--border); }
+.top-rates-table th { font-size: 0.75em; color: var(--muted); text-transform: uppercase; }
+.rank-cell { font-weight: 800; color: var(--muted); width: 40px; }
+.rate-cell { color: var(--accent); font-weight: 800; font-size: 1.1em; }
+
+.bbb-pill {
+  display: inline-block; padding: 2px 10px; border-radius: 6px;
+  font-weight: 700; font-size: 0.8em; text-decoration: none;
+}
+.bbb-good { background: #dcfce7; color: #166534; }
+.bbb-poor { background: #fee2e2; color: #991b1b; }
+.bbb-mid { background: #fef3c7; color: #92400e; }
+
+@media (max-width: 768px) {
+  .hero h1 { font-size: 2em; }
+  .calc-form { grid-template-columns: 1fr; }
+  .hero-stats { flex-direction: column; gap: 12px; }
+}
+</style>
+    </head>
+    <body data-dashboard="gas">
+    <script>
+    if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+    const swPath = window.location.pathname.includes('gasAndElectricTicker')
+    ? '/gasAndElectricTicker/sw.js'
+    : './sw.js';
+    navigator.serviceWorker.register(swPath)
+    .then(reg => console.log('SW registered!', reg))
+    .catch(err => console.error('SW registration failed:', err));
+    });
+    }
+    </script>
+    <nav class="topnav">
+    <div class="topnav-inner">
+    <span class="brand"><a href="index.html" style="color:inherit;text-decoration:none;">RateSavvy</a></span>
+    <div class="tabs">
+    <a href="electric_dashboard.html" class="tab " data-tab="electric">Electric</a>
+    <a href="gas_dashboard.html" class="tab tab-active" data-tab="gas">Gas</a>
+    </div>
+    </div>
+    </nav>
+    
+        <header class="hero">
+            <div class="hero-content">
+                <h1>Explore Energy Options</h1>
+                <p class="hero-lead">
+                    This free community tool tracks the <strong>Apples to Apples</strong> marketplace daily, attempting to filter out complex "fine print" 
+                    to highlight more straightforward, fixed-rate plans. <strong>Data is automated and not guaranteed.</strong>
+                </p>
+                <div class="hero-stats">
+                    <div class="stat-card">
+                        <span class="stat-value">2026-05-19</span>
+                        <span class="stat-label">Last Updated</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value">66</span>
+                        <span class="stat-label">Verified Plans</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+    
+    <section class="selection-section" id="selection-bar">
+      <div class="selection-inner">
+        <div class="selection-header">
+          <h2>Who delivers your gas?</h2>
+          <p class="selection-explainer">
+            Your <strong>utility company</strong> (also called the <strong>delivery company</strong>) is who runs the
+            wires or pipes down your street and reads your meter — they're responsible for the lines, outages, and getting
+            power to your home. <strong>They don't have to generate the power</strong>: deregulated states like yours let you pick a different
+            supplier for the actual energy, which is where you can save money. Pick yours below to see rates tailored to your area.
+          </p>
+        </div>
+
+        <div class="selection-block">
+          <div class="selection-field-row">
+            <label class="selection-field selection-field-state">
+              <span class="selection-label">State</span>
+              <select id="state-select">
+                <option value="OH" data-elec="electric_dashboard.html" data-gas="gas_dashboard.html">Ohio</option>
+<option value="PA" data-elec="pa-electric_dashboard.html" data-gas="pa-gas_dashboard.html" selected>Pennsylvania</option>
+              </select>
+            </label>
+          </div>
+          <div class="selection-field-row">
+            <span class="selection-label">Your utility / delivery company</span>
+            <div class="utility-buttons" id="utility-buttons"></div>
+            <select id="utility-select" data-fuel="gas" class="visually-hidden"></select>
+          </div>
+          <p class="selection-hint" id="selection-hint"></p>
+        </div>
+      </div>
+    </section>
+    <main class="container">
+    <p style="margin-top: -24px; margin-bottom: 32px; font-size: 0.85em; font-style: italic; color: #94a3b8; text-align: center;">
+    * This is a free open-source project. Rates are automated and may contain errors. Always verify data on official provider websites.
+    </p>
+    
+        <section class="card top-rates-card">
+            <h2 class="section-title" style="margin-top:0" id="top-rates-heading">Top 3 Rates Right Now</h2>
+            <div class="top-rates-controls">
+                <label>Filter by term
+                    <select id="top-rates-term-select"><option value="all">All terms</option><option value="6">6 months</option><option value="7">7 months</option><option value="8">8 months</option><option value="10">10 months</option><option value="12">12 months</option><option value="15">15 months</option><option value="18">18 months</option><option value="24">24 months</option><option value="36">36 months</option></select>
+                </label>
+            </div>
+            <table class="top-rates-table">
+                <thead>
+                    <tr><th>#</th><th>Utility</th><th>Supplier</th><th>BBB</th><th>Term</th><th>Rate ($/MCF)</th></tr>
+                </thead>
+                <tbody id="top-rates-tbody"></tbody>
+            </table>
+        </section>
+
+    
+    
+        <section class="card calculator-card" aria-label="Savings calculator">
+            <h2 class="section-title" style="margin-top:0">Should I Switch?</h2>
+            <div class="calc-form">
+                <label>My utility
+                    <select id="calc-utility">
+                        <option value="">— pick one —</option>
+                        <option value="Columbia Gas of PA">Columbia Gas of PA</option>
+<option value="National Fuel Gas">National Fuel Gas</option>
+<option value="PECO Gas">PECO Gas</option>
+<option value="Peoples Natural Gas">Peoples Natural Gas</option>
+<option value="Philadelphia Gas Works (PGW)">Philadelphia Gas Works (PGW)</option>
+<option value="UGI Utilities">UGI Utilities</option>
+                    </select>
+                </label>
+                <label>My current rate ($/MCF)
+                    <input type="number" step="0.00001" id="calc-current-rate" placeholder="e.g. 5.00">
+                </label>
+                <label>Monthly usage (MCF)
+                    <input type="number" step="1" id="calc-usage" placeholder="e.g. 10">
+                </label>
+                <label>Early termination fee ($, optional)
+                    <input type="number" step="1" id="calc-etf" value="0">
+                </label>
+            </div>
+            <div class="calc-results" id="calc-results">
+                <p class="calc-prompt">Enter your details above to see savings.</p>
+            </div>
+            <div id="calc-share-container" style="display:none; margin-top: 16px; border-top: 1px solid var(--border); padding-top: 16px; text-align: right;">
+                <button id="btn-share" class="btn" style="background: var(--primary); color: white; padding: 8px 16px; font-size: 0.85em; cursor: pointer; border: none; box-shadow: var(--shadow-sm);">
+                    🔗 Share My Savings
+                </button>
+            </div>
+        </section>
+
+    <h2 class="section-title">Available Plans by Delivery Utility</h2>
+    <p class="section-subtitle">Every supplier currently offering plans through each delivery utility in your area, sorted by contract length. The lowest rate per term is highlighted.</p>
+    <div class="leaderboard-cards">
+    <article class="util-card" data-utility="Columbia Gas of PA"><header class="util-card-head"><h3>Columbia Gas of PA</h3><span class="pill pill-rate">Min today: 3.19900 $/MCF</span><span class="badge-90d-low" title="Today's minimum matches the lowest rate in the last 90 days">90-DAY LOW</span></header><table><thead><tr><th>Supplier</th><th>BBB</th><th>Term</th><th>Rate ($/MCF)</th></tr></thead><tbody><tr><td>Energy Harbor</td><td><a class="bbb-pill bbb-unknown" href="https://www.google.com/search?q=Energy+Harbor+BBB+rating" target="_blank" rel="noopener" title="No rating cached — click to look up">—</a></td><td>6.0 Mo</td><td class='min-rate'><b>3.19900</b></td></tr><tr><td>Energy Harbor</td><td><a class="bbb-pill bbb-unknown" href="https://www.google.com/search?q=Energy+Harbor+BBB+rating" target="_blank" rel="noopener" title="No rating cached — click to look up">—</a></td><td>12.0 Mo</td><td class=''>3.99900</td></tr><tr><td>Pennsylvania Gas & Electric</td><td><a class="bbb-pill bbb-unknown" href="https://www.google.com/search?q=Pennsylvania+Gas+%26+Electric+BBB+rating" target="_blank" rel="noopener" title="No rating cached — click to look up">—</a></td><td>18.0 Mo</td><td class=''>4.39000</td></tr><tr><td>Pennsylvania Gas & Electric</td><td><a class="bbb-pill bbb-unknown" href="https://www.google.com/search?q=Pennsylvania+Gas+%26+Electric+BBB+rating" target="_blank" rel="noopener" title="No rating cached — click to look up">—</a></td><td>24.0 Mo</td><td class=''>4.39000</td></tr><tr><td>Energy Harbor</td><td><a class="bbb-pill bbb-unknown" href="https://www.google.com/search?q=Energy+Harbor+BBB+rating" target="_blank" rel="noopener" title="No rating cached — click to look up">—</a></td><td>36.0 Mo</td><td class=''>4.49900</td></tr></tbody></table></article><article class="util-card" data-utility="National Fuel Gas"><header class="util-card-head"><h3>National Fuel Gas</h3><span class="pill pill-rate">Min today: 5.09000 $/MCF</span><span class="badge-90d-low" title="Today's minimum matches the lowest rate in the last 90 days">90-DAY LOW</span></header><table><thead><tr><th>Supplier</th><th>BBB</th><th>Term</th><th>Rate ($/MCF)</th></tr></thead><tbody><tr><td>Major Energy Services</td><td><a class="bbb-pill bbb-unknown" href="https://www.google.com/search?q=Major+Energy+Services+BBB+rating" target="_blank" rel="noopener" title="No rating cached — click to look up">—</a></td><td>6.0 Mo</td><td class=''>5.80000</td></tr><tr><td>IDT Energy Inc</td><td><a class="bbb-pill bbb-unknown" href="https://www.google.com/search?q=IDT+Energy+Inc+BBB+rating" target="_blank" rel="noopener" title="No rating cached — click to look up">—</a></td><td>8.0 Mo</td><td class=''>8.25700</td></tr><tr><td>Pennsylvania Gas & Electric</td><td><a class="bbb-pill bbb-unknown" href="https://www.google.com/search?q=Pennsylvania+Gas+%26+Electric+BBB+rating" target="_blank" rel="noopener" title="No rating cached — click to look up">—</a></td><td>10.0 Mo</td><td class=''>5.20000</td></tr><tr><td>Pennsylvania Gas & Electric</td><td><a class="bbb-pill bbb-unknown" href="https://www.google.com/search?q=Pennsylvania+Gas+%26+Electric+BBB+rating" target="_blank" rel="noopener" title="No rating cached — click to look up">—</a></td><td>12.0 Mo</td><td class='min-rate'><b>5.09000</b></td></tr><tr><td>Pennsylvania Gas & Electric</td><td><a class="bbb-pill bbb-unknown" href="https://www.google.com/search?q=Pennsylvania+Gas+%26+Electric+BBB+rating" target="_blank" rel="noopener" title="No rating cached — click to look up">—</a></td><td>15.0 Mo</td><td class=''>5.20000</td></tr></tbody></table></article><article class="util-card" data-utility="PECO Gas"><header class="util-card-head"><h3>PECO Gas</h3><span class="pill pill-rate">Min today: 4.59000 $/MCF</span><span class="badge-90d-low" title="Today's minimum matches the lowest rate in the last 90 days">90-DAY LOW</span></header><table><thead><tr><th>Supplier</th><th>BBB</th><th>Term</th><th>Rate ($/MCF)</th></tr></thead><tbody><tr><td>Pennsylvania Gas & Electric</td><td><a class="bbb-pill bbb-unknown" href="https://www.google.com/search?q=Pennsylvania+Gas+%26+Electric+BBB+rating" target="_blank" rel="noopener" title="No rating cached — click to look up">—</a></td><td>6.0 Mo</td><td class='min-rate'><b>4.59000</b></td></tr><tr><td>Direct Energy</td><td><a class="bbb-pill bbb-unknown" href="https://www.google.com/search?q=Direct+Energy+BBB+rating" target="_blank" rel="noopener" title="No rating cached — click to look up">—</a></td><td>7.0 Mo</td><td class=''>5.49000</td></tr><tr><td>IDT Energy Inc</td><td><a class="bbb-pill bbb-unknown" href="https://www.google.com/search?q=IDT+Energy+Inc+BBB+rating" target="_blank" rel="noopener" title="No rating cached — click to look up">—</a></td><td>8.0 Mo</td><td class=''>9.14700</td></tr><tr><td>Pennsylvania Gas & Electric</td><td><a class="bbb-pill bbb-unknown" href="https://www.google.com/search?q=Pennsylvania+Gas+%26+Electric+BBB+rating" target="_blank" rel="noopener" title="No rating cached — click to look up">—</a></td><td>12.0 Mo</td><td class=''>4.99000</td></tr><tr><td>Pennsylvania Gas & Electric</td><td><a class="bbb-pill bbb-unknown" href="https://www.google.com/search?q=Pennsylvania+Gas+%26+Electric+BBB+rating" target="_blank" rel="noopener" title="No rating cached — click to look up">—</a></td><td>18.0 Mo</td><td class=''>4.89000</td></tr><tr><td>Pennsylvania Gas & Electric</td><td><a class="bbb-pill bbb-unknown" href="https://www.google.com/search?q=Pennsylvania+Gas+%26+Electric+BBB+rating" target="_blank" rel="noopener" title="No rating cached — click to look up">—</a></td><td>24.0 Mo</td><td class=''>4.99000</td></tr><tr><td>Pennsylvania Gas & Electric</td><td><a class="bbb-pill bbb-unknown" href="https://www.google.com/search?q=Pennsylvania+Gas+%26+Electric+BBB+rating" target="_blank" rel="noopener" title="No rating cached — click to look up">—</a></td><td>36.0 Mo</td><td class=''>4.99000</td></tr></tbody></table></article><article class="util-card" data-utility="Peoples Natural Gas"><header class="util-card-head"><h3>Peoples Natural Gas</h3><span class="pill pill-rate">Min today: 38.90000 $/MCF</span><span class="badge-90d-low" title="Today's minimum matches the lowest rate in the last 90 days">90-DAY LOW</span></header><table><thead><tr><th>Supplier</th><th>BBB</th><th>Term</th><th>Rate ($/MCF)</th></tr></thead><tbody><tr><td>Verde Energy USA Pennsylvania LLC</td><td><a class="bbb-pill bbb-unknown" href="https://www.google.com/search?q=Verde+Energy+USA+Pennsylvania+LLC+BBB+rating" target="_blank" rel="noopener" title="No rating cached — click to look up">—</a></td><td>6.0 Mo</td><td class=''>55.90000</td></tr><tr><td>Symmetry Energy Solutions LLC</td><td><a class="bbb-pill bbb-unknown" href="https://www.google.com/search?q=Symmetry+Energy+Solutions+LLC+BBB+rating" target="_blank" rel="noopener" title="No rating cached — click to look up">—</a></td><td>8.0 Mo</td><td class=''>42.50000</td></tr><tr><td>Pennsylvania Gas & Electric</td><td><a class="bbb-pill bbb-unknown" href="https://www.google.com/search?q=Pennsylvania+Gas+%26+Electric+BBB+rating" target="_blank" rel="noopener" title="No rating cached — click to look up">—</a></td><td>10.0 Mo</td><td class=''>39.00000</td></tr><tr><td>Symmetry Energy Solutions LLC</td><td><a class="bbb-pill bbb-unknown" href="https://www.google.com/search?q=Symmetry+Energy+Solutions+LLC+BBB+rating" target="_blank" rel="noopener" title="No rating cached — click to look up">—</a></td><td>12.0 Mo</td><td class='min-rate'><b>38.90000</b></td></tr><tr><td>Pennsylvania Gas & Electric</td><td><a class="bbb-pill bbb-unknown" href="https://www.google.com/search?q=Pennsylvania+Gas+%26+Electric+BBB+rating" target="_blank" rel="noopener" title="No rating cached — click to look up">—</a></td><td>15.0 Mo</td><td class=''>39.00000</td></tr></tbody></table></article><article class="util-card" data-utility="Philadelphia Gas Works (PGW)"><header class="util-card-head"><h3>Philadelphia Gas Works (PGW)</h3><span class="pill pill-rate">Min today: 7.19000 $/MCF</span><span class="badge-90d-low" title="Today's minimum matches the lowest rate in the last 90 days">90-DAY LOW</span></header><table><thead><tr><th>Supplier</th><th>BBB</th><th>Term</th><th>Rate ($/MCF)</th></tr></thead><tbody><tr><td>Shipley Energy</td><td><a class="bbb-pill bbb-unknown" href="https://www.google.com/search?q=Shipley+Energy+BBB+rating" target="_blank" rel="noopener" title="No rating cached — click to look up">—</a></td><td>12.0 Mo</td><td class='min-rate'><b>7.19000</b></td></tr></tbody></table></article><article class="util-card" data-utility="UGI Utilities"><header class="util-card-head"><h3>UGI Utilities</h3><span class="pill pill-rate">Min today: 6.59000 $/MCF</span><span class="badge-90d-low" title="Today's minimum matches the lowest rate in the last 90 days">90-DAY LOW</span></header><table><thead><tr><th>Supplier</th><th>BBB</th><th>Term</th><th>Rate ($/MCF)</th></tr></thead><tbody><tr><td>Frontier Utilities</td><td><a class="bbb-pill bbb-unknown" href="https://www.google.com/search?q=Frontier+Utilities+BBB+rating" target="_blank" rel="noopener" title="No rating cached — click to look up">—</a></td><td>6.0 Mo</td><td class=''>7.99000</td></tr><tr><td>Direct Energy</td><td><a class="bbb-pill bbb-unknown" href="https://www.google.com/search?q=Direct+Energy+BBB+rating" target="_blank" rel="noopener" title="No rating cached — click to look up">—</a></td><td>7.0 Mo</td><td class=''>6.89000</td></tr><tr><td>IDT Energy Inc</td><td><a class="bbb-pill bbb-unknown" href="https://www.google.com/search?q=IDT+Energy+Inc+BBB+rating" target="_blank" rel="noopener" title="No rating cached — click to look up">—</a></td><td>8.0 Mo</td><td class=''>9.06900</td></tr><tr><td>Pennsylvania Gas & Electric</td><td><a class="bbb-pill bbb-unknown" href="https://www.google.com/search?q=Pennsylvania+Gas+%26+Electric+BBB+rating" target="_blank" rel="noopener" title="No rating cached — click to look up">—</a></td><td>10.0 Mo</td><td class=''>7.65000</td></tr><tr><td>Shipley Energy</td><td><a class="bbb-pill bbb-unknown" href="https://www.google.com/search?q=Shipley+Energy+BBB+rating" target="_blank" rel="noopener" title="No rating cached — click to look up">—</a></td><td>12.0 Mo</td><td class='min-rate'><b>6.59000</b></td></tr><tr><td>Pennsylvania Gas & Electric</td><td><a class="bbb-pill bbb-unknown" href="https://www.google.com/search?q=Pennsylvania+Gas+%26+Electric+BBB+rating" target="_blank" rel="noopener" title="No rating cached — click to look up">—</a></td><td>15.0 Mo</td><td class=''>7.99900</td></tr><tr><td>Direct Energy</td><td><a class="bbb-pill bbb-unknown" href="https://www.google.com/search?q=Direct+Energy+BBB+rating" target="_blank" rel="noopener" title="No rating cached — click to look up">—</a></td><td>18.0 Mo</td><td class=''>7.89000</td></tr></tbody></table></article>
+    </div>
+    <details class="chart-section">
+    <summary>Market Dynamics</summary>
+    <div class="chart-body">
+    <div class="chart-controls">
+    <label>View
+    <select id="chart-view-select">
+    <option value="by-utility">Each utility, all terms</option>
+<option value="by-term">Each term, all utilities</option>
+<option value="cheap-util">Cheapest rate per utility</option>
+<option value="market-min">Market minimum (cheapest rate anywhere)</option>
+<option value="weather">Market minimum + Ohio weather overlay</option>
+    </select>
+    </label>
+    </div>
+    <div class="chart-view" data-view="by-utility"><div>                        <script type="text/javascript">window.PlotlyConfig = {MathJaxConfig: 'local'};</script>
+        <script charset="utf-8" src="https://cdn.plot.ly/plotly-3.1.0.min.js" integrity="sha256-Ei4740bWZhaUTQuD6q9yQlgVCMPBz6CZWhevDYPv93A=" crossorigin="anonymous"></script>                <div id="0b3a2d3d-fa03-4d7f-a0d7-3fff4a9f7909" class="plotly-graph-div" style="height:1520px; width:100%;"></div>            <script type="text/javascript">                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("0b3a2d3d-fa03-4d7f-a0d7-3fff4a9f7909")) {                    Plotly.newPlot(                        "0b3a2d3d-fa03-4d7f-a0d7-3fff4a9f7909",                        [{"hovertemplate":"Term=36.0 Mo\u003cbr\u003eUtility=Columbia Gas of PA\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"36.0 Mo","line":{"color":"#636efa","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines+markers","name":"36.0 Mo","orientation":"v","showlegend":true,"x":["2026-05-19T00:31:10.130123000","2026-05-19T00:31:10.130240000","2026-05-19T00:31:10.130278000"],"xaxis":"x6","y":{"dtype":"f8","bdata":"5dAi2\u002fn+EUBcj8L1KFwSQDMzMzMzMxZA"},"yaxis":"y6","type":"scatter"},{"hovertemplate":"Term=36.0 Mo\u003cbr\u003eUtility=PECO Gas\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"36.0 Mo","line":{"color":"#636efa","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines+markers","name":"36.0 Mo","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:11.718646000"],"xaxis":"x4","y":{"dtype":"f8","bdata":"9Shcj8L1E0A="},"yaxis":"y4","type":"scatter"},{"hovertemplate":"Term=24.0 Mo\u003cbr\u003eUtility=Columbia Gas of PA\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"24.0 Mo","line":{"color":"#EF553B","dash":"solid"},"marker":{"symbol":"diamond"},"mode":"lines+markers","name":"24.0 Mo","orientation":"v","showlegend":true,"x":["2026-05-19T00:31:10.130116000","2026-05-19T00:31:10.130233000","2026-05-19T00:31:10.130272000"],"xaxis":"x6","y":{"dtype":"f8","bdata":"5dAi2\u002fn+EUCPwvUoXI8RQAAAAAAAABVA"},"yaxis":"y6","type":"scatter"},{"hovertemplate":"Term=24.0 Mo\u003cbr\u003eUtility=PECO Gas\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"24.0 Mo","line":{"color":"#EF553B","dash":"solid"},"marker":{"symbol":"diamond"},"mode":"lines+markers","name":"24.0 Mo","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:11.718665000"],"xaxis":"x4","y":{"dtype":"f8","bdata":"9Shcj8L1E0A="},"yaxis":"y4","type":"scatter"},{"hovertemplate":"Term=18.0 Mo\u003cbr\u003eUtility=Columbia Gas of PA\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"18.0 Mo","line":{"color":"#00cc96","dash":"solid"},"marker":{"symbol":"square"},"mode":"lines+markers","name":"18.0 Mo","orientation":"v","showlegend":true,"x":["2026-05-19T00:31:10.130102000","2026-05-19T00:31:10.130217000"],"xaxis":"x6","y":{"dtype":"f8","bdata":"wvUoXI\u002fCFkCPwvUoXI8RQA=="},"yaxis":"y6","type":"scatter"},{"hovertemplate":"Term=18.0 Mo\u003cbr\u003eUtility=PECO Gas\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"18.0 Mo","line":{"color":"#00cc96","dash":"solid"},"marker":{"symbol":"square"},"mode":"lines+markers","name":"18.0 Mo","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:11.718533000","2026-05-19T00:31:11.718659000"],"xaxis":"x4","y":{"dtype":"f8","bdata":"wvUoXI\u002fCGECPwvUoXI8TQA=="},"yaxis":"y4","type":"scatter"},{"hovertemplate":"Term=18.0 Mo\u003cbr\u003eUtility=UGI Utilities\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"18.0 Mo","line":{"color":"#00cc96","dash":"solid"},"marker":{"symbol":"square"},"mode":"lines+markers","name":"18.0 Mo","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:08.614728000"],"xaxis":"x","y":{"dtype":"f8","bdata":"j8L1KFyPH0A="},"yaxis":"y","type":"scatter"},{"hovertemplate":"Term=15.0 Mo\u003cbr\u003eUtility=National Fuel Gas\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"15.0 Mo","line":{"color":"#ab63fa","dash":"solid"},"marker":{"symbol":"x"},"mode":"lines+markers","name":"15.0 Mo","orientation":"v","showlegend":true,"x":["2026-05-19T00:31:14.653649000"],"xaxis":"x5","y":{"dtype":"f8","bdata":"zczMzMzMFEA="},"yaxis":"y5","type":"scatter"},{"hovertemplate":"Term=15.0 Mo\u003cbr\u003eUtility=Peoples Natural Gas\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"15.0 Mo","line":{"color":"#ab63fa","dash":"solid"},"marker":{"symbol":"x"},"mode":"lines+markers","name":"15.0 Mo","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:13.240341000"],"xaxis":"x3","y":{"dtype":"f8","bdata":"AAAAAACAQ0A="},"yaxis":"y3","type":"scatter"},{"hovertemplate":"Term=15.0 Mo\u003cbr\u003eUtility=UGI Utilities\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"15.0 Mo","line":{"color":"#ab63fa","dash":"solid"},"marker":{"symbol":"x"},"mode":"lines+markers","name":"15.0 Mo","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:08.614874000"],"xaxis":"x","y":{"dtype":"f8","bdata":"5tAi2\u002fn+H0A="},"yaxis":"y","type":"scatter"},{"hovertemplate":"Term=12.0 Mo\u003cbr\u003eUtility=Columbia Gas of PA\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"12.0 Mo","line":{"color":"#FFA15A","dash":"solid"},"marker":{"symbol":"cross"},"mode":"lines+markers","name":"12.0 Mo","orientation":"v","showlegend":true,"x":["2026-05-19T00:31:10.130046000","2026-05-19T00:31:10.130109000","2026-05-19T00:31:10.130196000","2026-05-19T00:31:10.130210000","2026-05-19T00:31:10.130259000","2026-05-19T00:31:10.130265000","2026-05-19T00:31:10.130290000"],"xaxis":"x6","y":{"dtype":"f8","bdata":"dr6fGi9dGEDKoUW28\u002f0PQAAAAAAAABpAj8L1KFyPEUApXI\u002fC9SgVQAAAAAAAABVA9Shcj8L1F0A="},"yaxis":"y6","type":"scatter"},{"hovertemplate":"Term=12.0 Mo\u003cbr\u003eUtility=National Fuel Gas\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"12.0 Mo","line":{"color":"#FFA15A","dash":"solid"},"marker":{"symbol":"cross"},"mode":"lines+markers","name":"12.0 Mo","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:14.653570000","2026-05-19T00:31:14.653616000","2026-05-19T00:31:14.653635000"],"xaxis":"x5","y":{"dtype":"f8","bdata":"mZmZmZmZG0DMzMzMzMwWQFyPwvUoXBRA"},"yaxis":"y5","type":"scatter"},{"hovertemplate":"Term=12.0 Mo\u003cbr\u003eUtility=PECO Gas\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"12.0 Mo","line":{"color":"#FFA15A","dash":"solid"},"marker":{"symbol":"cross"},"mode":"lines+markers","name":"12.0 Mo","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:11.718491000","2026-05-19T00:31:11.718528000","2026-05-19T00:31:11.718544000","2026-05-19T00:31:11.718621000","2026-05-19T00:31:11.718653000","2026-05-19T00:31:11.718701000","2026-05-19T00:31:11.718735000"],"xaxis":"x4","y":{"dtype":"f8","bdata":"HFpkO9\u002fPIUBcj8L1KFwYQFyPwvUoXB5A9ihcj8L1GUD1KFyPwvUTQPUoXI\u002fC9RdAw\u002fUoXI\u002fCGkA="},"yaxis":"y4","type":"scatter"},{"hovertemplate":"Term=12.0 Mo\u003cbr\u003eUtility=Peoples Natural Gas\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"12.0 Mo","line":{"color":"#FFA15A","dash":"solid"},"marker":{"symbol":"cross"},"mode":"lines+markers","name":"12.0 Mo","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:13.240327000","2026-05-19T00:31:13.240376000","2026-05-19T00:31:13.240389000"],"xaxis":"x3","y":{"dtype":"f8","bdata":"AAAAAACAQ0AzMzMzM3NDQDMzMzMz80tA"},"yaxis":"y3","type":"scatter"},{"hovertemplate":"Term=12.0 Mo\u003cbr\u003eUtility=Philadelphia Gas Works (PGW)\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"12.0 Mo","line":{"color":"#FFA15A","dash":"solid"},"marker":{"symbol":"cross"},"mode":"lines+markers","name":"12.0 Mo","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:15.927078000","2026-05-19T00:31:15.927279000"],"xaxis":"x2","y":{"dtype":"f8","bdata":"Q4ts5\u002fspIkDC9Shcj8IcQA=="},"yaxis":"y2","type":"scatter"},{"hovertemplate":"Term=12.0 Mo\u003cbr\u003eUtility=UGI Utilities\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"12.0 Mo","line":{"color":"#FFA15A","dash":"solid"},"marker":{"symbol":"cross"},"mode":"lines+markers","name":"12.0 Mo","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:08.614586000","2026-05-19T00:31:08.614677000","2026-05-19T00:31:08.614721000","2026-05-19T00:31:08.614735000","2026-05-19T00:31:08.614790000","2026-05-19T00:31:08.614859000","2026-05-19T00:31:08.614903000","2026-05-19T00:31:08.614952000"],"xaxis":"x","y":{"dtype":"f8","bdata":"9Shcj8L1HUAEVg4tsh0jQFyPwvUoXB5ArkfhehQuIUD1KFyPwvUbQGZmZmZmZh1AXI\u002fC9ShcGkAoXI\u002fC9SgdQA=="},"yaxis":"y","type":"scatter"},{"hovertemplate":"Term=10.0 Mo\u003cbr\u003eUtility=National Fuel Gas\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"10.0 Mo","line":{"color":"#19d3f3","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines+markers","name":"10.0 Mo","orientation":"v","showlegend":true,"x":["2026-05-19T00:31:14.653642000"],"xaxis":"x5","y":{"dtype":"f8","bdata":"zczMzMzMFEA="},"yaxis":"y5","type":"scatter"},{"hovertemplate":"Term=10.0 Mo\u003cbr\u003eUtility=Peoples Natural Gas\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"10.0 Mo","line":{"color":"#19d3f3","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines+markers","name":"10.0 Mo","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:13.240334000"],"xaxis":"x3","y":{"dtype":"f8","bdata":"AAAAAACAQ0A="},"yaxis":"y3","type":"scatter"},{"hovertemplate":"Term=10.0 Mo\u003cbr\u003eUtility=UGI Utilities\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"10.0 Mo","line":{"color":"#19d3f3","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines+markers","name":"10.0 Mo","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:08.614867000"],"xaxis":"x","y":{"dtype":"f8","bdata":"mZmZmZmZHkA="},"yaxis":"y","type":"scatter"},{"hovertemplate":"Term=8.0 Mo\u003cbr\u003eUtility=National Fuel Gas\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"8.0 Mo","line":{"color":"#FF6692","dash":"solid"},"marker":{"symbol":"diamond"},"mode":"lines+markers","name":"8.0 Mo","orientation":"v","showlegend":true,"x":["2026-05-19T00:31:14.653583000"],"xaxis":"x5","y":{"dtype":"f8","bdata":"3SQGgZWDIEA="},"yaxis":"y5","type":"scatter"},{"hovertemplate":"Term=8.0 Mo\u003cbr\u003eUtility=PECO Gas\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"8.0 Mo","line":{"color":"#FF6692","dash":"solid"},"marker":{"symbol":"diamond"},"mode":"lines+markers","name":"8.0 Mo","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:11.718561000","2026-05-19T00:31:11.718677000"],"xaxis":"x4","y":{"dtype":"f8","bdata":"JAaBlUNLIkAkBoGVQ0siQA=="},"yaxis":"y4","type":"scatter"},{"hovertemplate":"Term=8.0 Mo\u003cbr\u003eUtility=Peoples Natural Gas\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"8.0 Mo","line":{"color":"#FF6692","dash":"solid"},"marker":{"symbol":"diamond"},"mode":"lines+markers","name":"8.0 Mo","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:13.240369000"],"xaxis":"x3","y":{"dtype":"f8","bdata":"AAAAAABARUA="},"yaxis":"y3","type":"scatter"},{"hovertemplate":"Term=8.0 Mo\u003cbr\u003eUtility=UGI Utilities\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"8.0 Mo","line":{"color":"#FF6692","dash":"solid"},"marker":{"symbol":"diamond"},"mode":"lines+markers","name":"8.0 Mo","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:08.614755000"],"xaxis":"x","y":{"dtype":"f8","bdata":"FtnO91MjIkA="},"yaxis":"y","type":"scatter"},{"hovertemplate":"Term=7.0 Mo\u003cbr\u003eUtility=PECO Gas\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"7.0 Mo","line":{"color":"#B6E880","dash":"solid"},"marker":{"symbol":"square"},"mode":"lines+markers","name":"7.0 Mo","orientation":"v","showlegend":true,"x":["2026-05-19T00:31:11.718522000"],"xaxis":"x4","y":{"dtype":"f8","bdata":"9ihcj8L1FUA="},"yaxis":"y4","type":"scatter"},{"hovertemplate":"Term=7.0 Mo\u003cbr\u003eUtility=UGI Utilities\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"7.0 Mo","line":{"color":"#B6E880","dash":"solid"},"marker":{"symbol":"square"},"mode":"lines+markers","name":"7.0 Mo","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:08.614714000"],"xaxis":"x","y":{"dtype":"f8","bdata":"jsL1KFyPG0A="},"yaxis":"y","type":"scatter"},{"hovertemplate":"Term=6.0 Mo\u003cbr\u003eUtility=Columbia Gas of PA\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"6.0 Mo","line":{"color":"#FF97FF","dash":"solid"},"marker":{"symbol":"x"},"mode":"lines+markers","name":"6.0 Mo","orientation":"v","showlegend":true,"x":["2026-05-19T00:31:10.130096000","2026-05-19T00:31:10.130130000","2026-05-19T00:31:10.130137000","2026-05-19T00:31:10.130247000","2026-05-19T00:31:10.130297000"],"xaxis":"x6","y":{"dtype":"f8","bdata":"XI\u002fC9ShcEEBkO99PjZcJQGQ730+NlwlAvXSTGARWDUD1KFyPwvUXQA=="},"yaxis":"y6","type":"scatter"},{"hovertemplate":"Term=6.0 Mo\u003cbr\u003eUtility=National Fuel Gas\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"6.0 Mo","line":{"color":"#FF97FF","dash":"solid"},"marker":{"symbol":"x"},"mode":"lines+markers","name":"6.0 Mo","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:14.653622000"],"xaxis":"x5","y":{"dtype":"f8","bdata":"MjMzMzMzF0A="},"yaxis":"y5","type":"scatter"},{"hovertemplate":"Term=6.0 Mo\u003cbr\u003eUtility=PECO Gas\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"6.0 Mo","line":{"color":"#FF97FF","dash":"solid"},"marker":{"symbol":"x"},"mode":"lines+markers","name":"6.0 Mo","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:11.718550000","2026-05-19T00:31:11.718671000"],"xaxis":"x4","y":{"dtype":"f8","bdata":"4XoUrkdhJUBcj8L1KFwSQA=="},"yaxis":"y4","type":"scatter"},{"hovertemplate":"Term=6.0 Mo\u003cbr\u003eUtility=Peoples Natural Gas\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"6.0 Mo","line":{"color":"#FF97FF","dash":"solid"},"marker":{"symbol":"x"},"mode":"lines+markers","name":"6.0 Mo","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:13.240395000"],"xaxis":"x3","y":{"dtype":"f8","bdata":"MzMzMzPzS0A="},"yaxis":"y3","type":"scatter"},{"hovertemplate":"Term=6.0 Mo\u003cbr\u003eUtility=UGI Utilities\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"6.0 Mo","line":{"color":"#FF97FF","dash":"solid"},"marker":{"symbol":"x"},"mode":"lines+markers","name":"6.0 Mo","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:08.614741000"],"xaxis":"x","y":{"dtype":"f8","bdata":"9ihcj8L1H0A="},"yaxis":"y","type":"scatter"}],                        {"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"xaxis":{"anchor":"y","domain":[0.0,1.0],"title":{"text":"Date"},"matches":"x","tickformat":"%Y-%m-%d"},"yaxis":{"anchor":"x","domain":[0.0,0.10833333333333331],"title":{"text":"Rate ($\u002fMCF)"},"range":[0.5639499999999997,58.53505],"matches":"y"},"xaxis2":{"anchor":"y2","domain":[0.0,1.0],"matches":"x","showticklabels":false,"tickformat":"%Y-%m-%d"},"yaxis2":{"anchor":"x2","domain":[0.17833333333333332,0.2866666666666666],"matches":"y","title":{"text":"Rate ($\u002fMCF)"},"range":[0.5639499999999997,58.53505]},"xaxis3":{"anchor":"y3","domain":[0.0,1.0],"matches":"x","showticklabels":false,"tickformat":"%Y-%m-%d"},"yaxis3":{"anchor":"x3","domain":[0.35666666666666663,0.46499999999999997],"matches":"y","title":{"text":"Rate ($\u002fMCF)"},"range":[0.5639499999999997,58.53505]},"xaxis4":{"anchor":"y4","domain":[0.0,1.0],"matches":"x","showticklabels":false,"tickformat":"%Y-%m-%d"},"yaxis4":{"anchor":"x4","domain":[0.5349999999999999,0.6433333333333332],"matches":"y","title":{"text":"Rate ($\u002fMCF)"},"range":[0.5639499999999997,58.53505]},"xaxis5":{"anchor":"y5","domain":[0.0,1.0],"matches":"x","showticklabels":false,"tickformat":"%Y-%m-%d"},"yaxis5":{"anchor":"x5","domain":[0.7133333333333333,0.8216666666666665],"matches":"y","title":{"text":"Rate ($\u002fMCF)"},"range":[0.5639499999999997,58.53505]},"xaxis6":{"anchor":"y6","domain":[0.0,1.0],"matches":"x","showticklabels":false,"tickformat":"%Y-%m-%d"},"yaxis6":{"anchor":"x6","domain":[0.8916666666666666,0.9999999999999999],"matches":"y","title":{"text":"Rate ($\u002fMCF)"},"range":[0.5639499999999997,58.53505]},"annotations":[{"font":{"size":13},"showarrow":false,"text":"\u003cb\u003eUGI Utilities\u003c\u002fb\u003e","x":0.5,"xanchor":"center","xref":"paper","y":0.10833333333333331,"yanchor":"bottom","yref":"paper"},{"font":{"size":13},"showarrow":false,"text":"\u003cb\u003ePhiladelphia Gas Works (PGW)\u003c\u002fb\u003e","x":0.5,"xanchor":"center","xref":"paper","y":0.2866666666666666,"yanchor":"bottom","yref":"paper"},{"font":{"size":13},"showarrow":false,"text":"\u003cb\u003ePeoples Natural Gas\u003c\u002fb\u003e","x":0.5,"xanchor":"center","xref":"paper","y":0.46499999999999997,"yanchor":"bottom","yref":"paper"},{"font":{"size":13},"showarrow":false,"text":"\u003cb\u003ePECO Gas\u003c\u002fb\u003e","x":0.5,"xanchor":"center","xref":"paper","y":0.6433333333333332,"yanchor":"bottom","yref":"paper"},{"font":{"size":13},"showarrow":false,"text":"\u003cb\u003eNational Fuel Gas\u003c\u002fb\u003e","x":0.5,"xanchor":"center","xref":"paper","y":0.8216666666666665,"yanchor":"bottom","yref":"paper"},{"font":{"size":13},"showarrow":false,"text":"\u003cb\u003eColumbia Gas of PA\u003c\u002fb\u003e","x":0.5,"xanchor":"center","xref":"paper","y":0.9999999999999999,"yanchor":"bottom","yref":"paper"}],"legend":{"title":{"text":"Term"},"tracegroupgap":0,"orientation":"h","yanchor":"bottom","y":1.02,"xanchor":"left","x":0},"margin":{"t":30,"b":40,"l":55,"r":20},"font":{"family":"-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif","color":"#1a2233"},"hovermode":"x unified","height":1520,"paper_bgcolor":"white","plot_bgcolor":"#fafbfc","showlegend":true},                        {"responsive": true}                    )                };            </script>        </div></div><div class="chart-view" data-view="by-term" hidden><div>                            <div id="e76c5277-f304-45c0-b1c3-06a7dfa94622" class="plotly-graph-div" style="height:2240px; width:100%;"></div>            <script type="text/javascript">                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("e76c5277-f304-45c0-b1c3-06a7dfa94622")) {                    Plotly.newPlot(                        "e76c5277-f304-45c0-b1c3-06a7dfa94622",                        [{"hovertemplate":"Utility=Columbia Gas of PA\u003cbr\u003eTerm_Str=6.0 Mo\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"Columbia Gas of PA","line":{"color":"#636efa","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines+markers","name":"Columbia Gas of PA","orientation":"v","showlegend":true,"x":["2026-05-19T00:31:10.130096000","2026-05-19T00:31:10.130130000","2026-05-19T00:31:10.130137000","2026-05-19T00:31:10.130247000","2026-05-19T00:31:10.130297000"],"xaxis":"x9","y":{"dtype":"f8","bdata":"XI\u002fC9ShcEEBkO99PjZcJQGQ730+NlwlAvXSTGARWDUD1KFyPwvUXQA=="},"yaxis":"y9","type":"scatter"},{"hovertemplate":"Utility=National Fuel Gas\u003cbr\u003eTerm_Str=6.0 Mo\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"National Fuel Gas","line":{"color":"#EF553B","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines+markers","name":"National Fuel Gas","orientation":"v","showlegend":true,"x":["2026-05-19T00:31:14.653622000"],"xaxis":"x9","y":{"dtype":"f8","bdata":"MjMzMzMzF0A="},"yaxis":"y9","type":"scatter"},{"hovertemplate":"Utility=PECO Gas\u003cbr\u003eTerm_Str=6.0 Mo\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"PECO Gas","line":{"color":"#00cc96","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines+markers","name":"PECO Gas","orientation":"v","showlegend":true,"x":["2026-05-19T00:31:11.718550000","2026-05-19T00:31:11.718671000"],"xaxis":"x9","y":{"dtype":"f8","bdata":"4XoUrkdhJUBcj8L1KFwSQA=="},"yaxis":"y9","type":"scatter"},{"hovertemplate":"Utility=Peoples Natural Gas\u003cbr\u003eTerm_Str=6.0 Mo\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"Peoples Natural Gas","line":{"color":"#ab63fa","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines+markers","name":"Peoples Natural Gas","orientation":"v","showlegend":true,"x":["2026-05-19T00:31:13.240395000"],"xaxis":"x9","y":{"dtype":"f8","bdata":"MzMzMzPzS0A="},"yaxis":"y9","type":"scatter"},{"hovertemplate":"Utility=UGI Utilities\u003cbr\u003eTerm_Str=6.0 Mo\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"UGI Utilities","line":{"color":"#19d3f3","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines+markers","name":"UGI Utilities","orientation":"v","showlegend":true,"x":["2026-05-19T00:31:08.614741000"],"xaxis":"x9","y":{"dtype":"f8","bdata":"9ihcj8L1H0A="},"yaxis":"y9","type":"scatter"},{"hovertemplate":"Utility=PECO Gas\u003cbr\u003eTerm_Str=7.0 Mo\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"PECO Gas","line":{"color":"#00cc96","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines+markers","name":"PECO Gas","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:11.718522000"],"xaxis":"x8","y":{"dtype":"f8","bdata":"9ihcj8L1FUA="},"yaxis":"y8","type":"scatter"},{"hovertemplate":"Utility=UGI Utilities\u003cbr\u003eTerm_Str=7.0 Mo\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"UGI Utilities","line":{"color":"#19d3f3","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines+markers","name":"UGI Utilities","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:08.614714000"],"xaxis":"x8","y":{"dtype":"f8","bdata":"jsL1KFyPG0A="},"yaxis":"y8","type":"scatter"},{"hovertemplate":"Utility=National Fuel Gas\u003cbr\u003eTerm_Str=8.0 Mo\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"National Fuel Gas","line":{"color":"#EF553B","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines+markers","name":"National Fuel Gas","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:14.653583000"],"xaxis":"x7","y":{"dtype":"f8","bdata":"3SQGgZWDIEA="},"yaxis":"y7","type":"scatter"},{"hovertemplate":"Utility=PECO Gas\u003cbr\u003eTerm_Str=8.0 Mo\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"PECO Gas","line":{"color":"#00cc96","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines+markers","name":"PECO Gas","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:11.718561000","2026-05-19T00:31:11.718677000"],"xaxis":"x7","y":{"dtype":"f8","bdata":"JAaBlUNLIkAkBoGVQ0siQA=="},"yaxis":"y7","type":"scatter"},{"hovertemplate":"Utility=Peoples Natural Gas\u003cbr\u003eTerm_Str=8.0 Mo\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"Peoples Natural Gas","line":{"color":"#ab63fa","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines+markers","name":"Peoples Natural Gas","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:13.240369000"],"xaxis":"x7","y":{"dtype":"f8","bdata":"AAAAAABARUA="},"yaxis":"y7","type":"scatter"},{"hovertemplate":"Utility=UGI Utilities\u003cbr\u003eTerm_Str=8.0 Mo\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"UGI Utilities","line":{"color":"#19d3f3","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines+markers","name":"UGI Utilities","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:08.614755000"],"xaxis":"x7","y":{"dtype":"f8","bdata":"FtnO91MjIkA="},"yaxis":"y7","type":"scatter"},{"hovertemplate":"Utility=National Fuel Gas\u003cbr\u003eTerm_Str=10.0 Mo\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"National Fuel Gas","line":{"color":"#EF553B","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines+markers","name":"National Fuel Gas","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:14.653642000"],"xaxis":"x6","y":{"dtype":"f8","bdata":"zczMzMzMFEA="},"yaxis":"y6","type":"scatter"},{"hovertemplate":"Utility=Peoples Natural Gas\u003cbr\u003eTerm_Str=10.0 Mo\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"Peoples Natural Gas","line":{"color":"#ab63fa","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines+markers","name":"Peoples Natural Gas","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:13.240334000"],"xaxis":"x6","y":{"dtype":"f8","bdata":"AAAAAACAQ0A="},"yaxis":"y6","type":"scatter"},{"hovertemplate":"Utility=UGI Utilities\u003cbr\u003eTerm_Str=10.0 Mo\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"UGI Utilities","line":{"color":"#19d3f3","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines+markers","name":"UGI Utilities","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:08.614867000"],"xaxis":"x6","y":{"dtype":"f8","bdata":"mZmZmZmZHkA="},"yaxis":"y6","type":"scatter"},{"hovertemplate":"Utility=Columbia Gas of PA\u003cbr\u003eTerm_Str=12.0 Mo\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"Columbia Gas of PA","line":{"color":"#636efa","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines+markers","name":"Columbia Gas of PA","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:10.130046000","2026-05-19T00:31:10.130109000","2026-05-19T00:31:10.130196000","2026-05-19T00:31:10.130210000","2026-05-19T00:31:10.130259000","2026-05-19T00:31:10.130265000","2026-05-19T00:31:10.130290000"],"xaxis":"x5","y":{"dtype":"f8","bdata":"dr6fGi9dGEDKoUW28\u002f0PQAAAAAAAABpAj8L1KFyPEUApXI\u002fC9SgVQAAAAAAAABVA9Shcj8L1F0A="},"yaxis":"y5","type":"scatter"},{"hovertemplate":"Utility=National Fuel Gas\u003cbr\u003eTerm_Str=12.0 Mo\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"National Fuel Gas","line":{"color":"#EF553B","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines+markers","name":"National Fuel Gas","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:14.653570000","2026-05-19T00:31:14.653616000","2026-05-19T00:31:14.653635000"],"xaxis":"x5","y":{"dtype":"f8","bdata":"mZmZmZmZG0DMzMzMzMwWQFyPwvUoXBRA"},"yaxis":"y5","type":"scatter"},{"hovertemplate":"Utility=PECO Gas\u003cbr\u003eTerm_Str=12.0 Mo\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"PECO Gas","line":{"color":"#00cc96","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines+markers","name":"PECO Gas","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:11.718491000","2026-05-19T00:31:11.718528000","2026-05-19T00:31:11.718544000","2026-05-19T00:31:11.718621000","2026-05-19T00:31:11.718653000","2026-05-19T00:31:11.718701000","2026-05-19T00:31:11.718735000"],"xaxis":"x5","y":{"dtype":"f8","bdata":"HFpkO9\u002fPIUBcj8L1KFwYQFyPwvUoXB5A9ihcj8L1GUD1KFyPwvUTQPUoXI\u002fC9RdAw\u002fUoXI\u002fCGkA="},"yaxis":"y5","type":"scatter"},{"hovertemplate":"Utility=Peoples Natural Gas\u003cbr\u003eTerm_Str=12.0 Mo\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"Peoples Natural Gas","line":{"color":"#ab63fa","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines+markers","name":"Peoples Natural Gas","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:13.240327000","2026-05-19T00:31:13.240376000","2026-05-19T00:31:13.240389000"],"xaxis":"x5","y":{"dtype":"f8","bdata":"AAAAAACAQ0AzMzMzM3NDQDMzMzMz80tA"},"yaxis":"y5","type":"scatter"},{"hovertemplate":"Utility=Philadelphia Gas Works (PGW)\u003cbr\u003eTerm_Str=12.0 Mo\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"Philadelphia Gas Works (PGW)","line":{"color":"#FFA15A","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines+markers","name":"Philadelphia Gas Works (PGW)","orientation":"v","showlegend":true,"x":["2026-05-19T00:31:15.927078000","2026-05-19T00:31:15.927279000"],"xaxis":"x5","y":{"dtype":"f8","bdata":"Q4ts5\u002fspIkDC9Shcj8IcQA=="},"yaxis":"y5","type":"scatter"},{"hovertemplate":"Utility=UGI Utilities\u003cbr\u003eTerm_Str=12.0 Mo\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"UGI Utilities","line":{"color":"#19d3f3","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines+markers","name":"UGI Utilities","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:08.614586000","2026-05-19T00:31:08.614677000","2026-05-19T00:31:08.614721000","2026-05-19T00:31:08.614735000","2026-05-19T00:31:08.614790000","2026-05-19T00:31:08.614859000","2026-05-19T00:31:08.614903000","2026-05-19T00:31:08.614952000"],"xaxis":"x5","y":{"dtype":"f8","bdata":"9Shcj8L1HUAEVg4tsh0jQFyPwvUoXB5ArkfhehQuIUD1KFyPwvUbQGZmZmZmZh1AXI\u002fC9ShcGkAoXI\u002fC9SgdQA=="},"yaxis":"y5","type":"scatter"},{"hovertemplate":"Utility=National Fuel Gas\u003cbr\u003eTerm_Str=15.0 Mo\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"National Fuel Gas","line":{"color":"#EF553B","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines+markers","name":"National Fuel Gas","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:14.653649000"],"xaxis":"x4","y":{"dtype":"f8","bdata":"zczMzMzMFEA="},"yaxis":"y4","type":"scatter"},{"hovertemplate":"Utility=Peoples Natural Gas\u003cbr\u003eTerm_Str=15.0 Mo\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"Peoples Natural Gas","line":{"color":"#ab63fa","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines+markers","name":"Peoples Natural Gas","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:13.240341000"],"xaxis":"x4","y":{"dtype":"f8","bdata":"AAAAAACAQ0A="},"yaxis":"y4","type":"scatter"},{"hovertemplate":"Utility=UGI Utilities\u003cbr\u003eTerm_Str=15.0 Mo\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"UGI Utilities","line":{"color":"#19d3f3","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines+markers","name":"UGI Utilities","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:08.614874000"],"xaxis":"x4","y":{"dtype":"f8","bdata":"5tAi2\u002fn+H0A="},"yaxis":"y4","type":"scatter"},{"hovertemplate":"Utility=Columbia Gas of PA\u003cbr\u003eTerm_Str=18.0 Mo\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"Columbia Gas of PA","line":{"color":"#636efa","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines+markers","name":"Columbia Gas of PA","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:10.130102000","2026-05-19T00:31:10.130217000"],"xaxis":"x3","y":{"dtype":"f8","bdata":"wvUoXI\u002fCFkCPwvUoXI8RQA=="},"yaxis":"y3","type":"scatter"},{"hovertemplate":"Utility=PECO Gas\u003cbr\u003eTerm_Str=18.0 Mo\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"PECO Gas","line":{"color":"#00cc96","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines+markers","name":"PECO Gas","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:11.718533000","2026-05-19T00:31:11.718659000"],"xaxis":"x3","y":{"dtype":"f8","bdata":"wvUoXI\u002fCGECPwvUoXI8TQA=="},"yaxis":"y3","type":"scatter"},{"hovertemplate":"Utility=UGI Utilities\u003cbr\u003eTerm_Str=18.0 Mo\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"UGI Utilities","line":{"color":"#19d3f3","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines+markers","name":"UGI Utilities","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:08.614728000"],"xaxis":"x3","y":{"dtype":"f8","bdata":"j8L1KFyPH0A="},"yaxis":"y3","type":"scatter"},{"hovertemplate":"Utility=Columbia Gas of PA\u003cbr\u003eTerm_Str=24.0 Mo\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"Columbia Gas of PA","line":{"color":"#636efa","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines+markers","name":"Columbia Gas of PA","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:10.130116000","2026-05-19T00:31:10.130233000","2026-05-19T00:31:10.130272000"],"xaxis":"x2","y":{"dtype":"f8","bdata":"5dAi2\u002fn+EUCPwvUoXI8RQAAAAAAAABVA"},"yaxis":"y2","type":"scatter"},{"hovertemplate":"Utility=PECO Gas\u003cbr\u003eTerm_Str=24.0 Mo\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"PECO Gas","line":{"color":"#00cc96","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines+markers","name":"PECO Gas","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:11.718665000"],"xaxis":"x2","y":{"dtype":"f8","bdata":"9Shcj8L1E0A="},"yaxis":"y2","type":"scatter"},{"hovertemplate":"Utility=Columbia Gas of PA\u003cbr\u003eTerm_Str=36.0 Mo\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"Columbia Gas of PA","line":{"color":"#636efa","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines+markers","name":"Columbia Gas of PA","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:10.130123000","2026-05-19T00:31:10.130240000","2026-05-19T00:31:10.130278000"],"xaxis":"x","y":{"dtype":"f8","bdata":"5dAi2\u002fn+EUBcj8L1KFwSQDMzMzMzMxZA"},"yaxis":"y","type":"scatter"},{"hovertemplate":"Utility=PECO Gas\u003cbr\u003eTerm_Str=36.0 Mo\u003cbr\u003eDate=%{x}\u003cbr\u003eRate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"PECO Gas","line":{"color":"#00cc96","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines+markers","name":"PECO Gas","orientation":"v","showlegend":false,"x":["2026-05-19T00:31:11.718646000"],"xaxis":"x","y":{"dtype":"f8","bdata":"9Shcj8L1E0A="},"yaxis":"y","type":"scatter"}],                        {"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"xaxis":{"anchor":"y","domain":[0.0,1.0],"title":{"text":"Date"},"matches":"x","tickformat":"%Y-%m-%d"},"yaxis":{"anchor":"x","domain":[0.0,0.09333333333333332],"title":{"text":"Rate ($\u002fMCF)"},"range":[0.5639499999999997,58.53505],"matches":"y"},"xaxis2":{"anchor":"y2","domain":[0.0,1.0],"matches":"x","showticklabels":false,"tickformat":"%Y-%m-%d"},"yaxis2":{"anchor":"x2","domain":[0.11333333333333333,0.20666666666666667],"matches":"y","title":{"text":"Rate ($\u002fMCF)"},"range":[0.5639499999999997,58.53505]},"xaxis3":{"anchor":"y3","domain":[0.0,1.0],"matches":"x","showticklabels":false,"tickformat":"%Y-%m-%d"},"yaxis3":{"anchor":"x3","domain":[0.22666666666666666,0.31999999999999995],"matches":"y","title":{"text":"Rate ($\u002fMCF)"},"range":[0.5639499999999997,58.53505]},"xaxis4":{"anchor":"y4","domain":[0.0,1.0],"matches":"x","showticklabels":false,"tickformat":"%Y-%m-%d"},"yaxis4":{"anchor":"x4","domain":[0.33999999999999997,0.4333333333333333],"matches":"y","title":{"text":"Rate ($\u002fMCF)"},"range":[0.5639499999999997,58.53505]},"xaxis5":{"anchor":"y5","domain":[0.0,1.0],"matches":"x","showticklabels":false,"tickformat":"%Y-%m-%d"},"yaxis5":{"anchor":"x5","domain":[0.4533333333333333,0.5466666666666666],"matches":"y","title":{"text":"Rate ($\u002fMCF)"},"range":[0.5639499999999997,58.53505]},"xaxis6":{"anchor":"y6","domain":[0.0,1.0],"matches":"x","showticklabels":false,"tickformat":"%Y-%m-%d"},"yaxis6":{"anchor":"x6","domain":[0.5666666666666667,0.6599999999999999],"matches":"y","title":{"text":"Rate ($\u002fMCF)"},"range":[0.5639499999999997,58.53505]},"xaxis7":{"anchor":"y7","domain":[0.0,1.0],"matches":"x","showticklabels":false,"tickformat":"%Y-%m-%d"},"yaxis7":{"anchor":"x7","domain":[0.6799999999999999,0.7733333333333332],"matches":"y","title":{"text":"Rate ($\u002fMCF)"},"range":[0.5639499999999997,58.53505]},"xaxis8":{"anchor":"y8","domain":[0.0,1.0],"matches":"x","showticklabels":false,"tickformat":"%Y-%m-%d"},"yaxis8":{"anchor":"x8","domain":[0.7933333333333333,0.8866666666666667],"matches":"y","title":{"text":"Rate ($\u002fMCF)"},"range":[0.5639499999999997,58.53505]},"xaxis9":{"anchor":"y9","domain":[0.0,1.0],"matches":"x","showticklabels":false,"tickformat":"%Y-%m-%d"},"yaxis9":{"anchor":"x9","domain":[0.9066666666666666,1.0],"matches":"y","title":{"text":"Rate ($\u002fMCF)"},"range":[0.5639499999999997,58.53505]},"annotations":[{"font":{"size":13},"showarrow":false,"text":"\u003cb\u003e36.0 Mo\u003c\u002fb\u003e","x":0.5,"xanchor":"center","xref":"paper","y":0.09333333333333332,"yanchor":"bottom","yref":"paper"},{"font":{"size":13},"showarrow":false,"text":"\u003cb\u003e24.0 Mo\u003c\u002fb\u003e","x":0.5,"xanchor":"center","xref":"paper","y":0.20666666666666667,"yanchor":"bottom","yref":"paper"},{"font":{"size":13},"showarrow":false,"text":"\u003cb\u003e18.0 Mo\u003c\u002fb\u003e","x":0.5,"xanchor":"center","xref":"paper","y":0.31999999999999995,"yanchor":"bottom","yref":"paper"},{"font":{"size":13},"showarrow":false,"text":"\u003cb\u003e15.0 Mo\u003c\u002fb\u003e","x":0.5,"xanchor":"center","xref":"paper","y":0.4333333333333333,"yanchor":"bottom","yref":"paper"},{"font":{"size":13},"showarrow":false,"text":"\u003cb\u003e12.0 Mo\u003c\u002fb\u003e","x":0.5,"xanchor":"center","xref":"paper","y":0.5466666666666666,"yanchor":"bottom","yref":"paper"},{"font":{"size":13},"showarrow":false,"text":"\u003cb\u003e10.0 Mo\u003c\u002fb\u003e","x":0.5,"xanchor":"center","xref":"paper","y":0.6599999999999999,"yanchor":"bottom","yref":"paper"},{"font":{"size":13},"showarrow":false,"text":"\u003cb\u003e8.0 Mo\u003c\u002fb\u003e","x":0.5,"xanchor":"center","xref":"paper","y":0.7733333333333332,"yanchor":"bottom","yref":"paper"},{"font":{"size":13},"showarrow":false,"text":"\u003cb\u003e7.0 Mo\u003c\u002fb\u003e","x":0.5,"xanchor":"center","xref":"paper","y":0.8866666666666667,"yanchor":"bottom","yref":"paper"},{"font":{"size":13},"showarrow":false,"text":"\u003cb\u003e6.0 Mo\u003c\u002fb\u003e","x":0.5,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"}],"legend":{"title":{"text":"Utility"},"tracegroupgap":0,"orientation":"h","yanchor":"bottom","y":1.02,"xanchor":"left","x":0},"margin":{"t":30,"b":40,"l":55,"r":20},"font":{"family":"-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif","color":"#1a2233"},"hovermode":"x unified","height":2240,"paper_bgcolor":"white","plot_bgcolor":"#fafbfc","showlegend":true},                        {"responsive": true}                    )                };            </script>        </div></div><div class="chart-view" data-view="cheap-util" hidden><div>                            <div id="32c685c0-0451-4346-9a9f-b5a55c8fa654" class="plotly-graph-div" style="height:520px; width:100%;"></div>            <script type="text/javascript">                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("32c685c0-0451-4346-9a9f-b5a55c8fa654")) {                    Plotly.newPlot(                        "32c685c0-0451-4346-9a9f-b5a55c8fa654",                        [{"hovertemplate":"Utility=Columbia Gas of PA\u003cbr\u003eDate=%{x}\u003cbr\u003eBest Rate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"Columbia Gas of PA","line":{"color":"#636efa","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines+markers","name":"Columbia Gas of PA","orientation":"v","showlegend":true,"x":["2026-05-19T00:00:00.000000000"],"xaxis":"x","y":{"dtype":"f8","bdata":"ZDvfT42XCUA="},"yaxis":"y","type":"scatter"},{"hovertemplate":"Utility=National Fuel Gas\u003cbr\u003eDate=%{x}\u003cbr\u003eBest Rate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"National Fuel Gas","line":{"color":"#EF553B","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines+markers","name":"National Fuel Gas","orientation":"v","showlegend":true,"x":["2026-05-19T00:00:00.000000000"],"xaxis":"x","y":{"dtype":"f8","bdata":"XI\u002fC9ShcFEA="},"yaxis":"y","type":"scatter"},{"hovertemplate":"Utility=PECO Gas\u003cbr\u003eDate=%{x}\u003cbr\u003eBest Rate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"PECO Gas","line":{"color":"#00cc96","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines+markers","name":"PECO Gas","orientation":"v","showlegend":true,"x":["2026-05-19T00:00:00.000000000"],"xaxis":"x","y":{"dtype":"f8","bdata":"XI\u002fC9ShcEkA="},"yaxis":"y","type":"scatter"},{"hovertemplate":"Utility=Peoples Natural Gas\u003cbr\u003eDate=%{x}\u003cbr\u003eBest Rate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"Peoples Natural Gas","line":{"color":"#ab63fa","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines+markers","name":"Peoples Natural Gas","orientation":"v","showlegend":true,"x":["2026-05-19T00:00:00.000000000"],"xaxis":"x","y":{"dtype":"f8","bdata":"MzMzMzNzQ0A="},"yaxis":"y","type":"scatter"},{"hovertemplate":"Utility=Philadelphia Gas Works (PGW)\u003cbr\u003eDate=%{x}\u003cbr\u003eBest Rate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"Philadelphia Gas Works (PGW)","line":{"color":"#FFA15A","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines+markers","name":"Philadelphia Gas Works (PGW)","orientation":"v","showlegend":true,"x":["2026-05-19T00:00:00.000000000"],"xaxis":"x","y":{"dtype":"f8","bdata":"wvUoXI\u002fCHEA="},"yaxis":"y","type":"scatter"},{"hovertemplate":"Utility=UGI Utilities\u003cbr\u003eDate=%{x}\u003cbr\u003eBest Rate ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"UGI Utilities","line":{"color":"#19d3f3","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines+markers","name":"UGI Utilities","orientation":"v","showlegend":true,"x":["2026-05-19T00:00:00.000000000"],"xaxis":"x","y":{"dtype":"f8","bdata":"XI\u002fC9ShcGkA="},"yaxis":"y","type":"scatter"}],                        {"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"xaxis":{"anchor":"y","domain":[0.0,1.0],"title":{"text":"Date"},"tickformat":"%Y-%m-%d"},"yaxis":{"anchor":"x","domain":[0.0,1.0],"title":{"text":"Best Rate ($\u002fMCF)"},"range":[0.5639499999999997,58.53505]},"legend":{"title":{"text":"Utility"},"tracegroupgap":0,"orientation":"h","yanchor":"bottom","y":1.02,"xanchor":"left","x":0},"margin":{"t":30,"b":40,"l":55,"r":20},"font":{"family":"-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif","color":"#1a2233"},"hovermode":"x unified","height":520,"paper_bgcolor":"white","plot_bgcolor":"#fafbfc","showlegend":true},                        {"responsive": true}                    )                };            </script>        </div></div><div class="chart-view" data-view="market-min" hidden><div>                            <div id="6a9887f3-c8e8-49ed-90d0-f055e7f70429" class="plotly-graph-div" style="height:420px; width:100%;"></div>            <script type="text/javascript">                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("6a9887f3-c8e8-49ed-90d0-f055e7f70429")) {                    Plotly.newPlot(                        "6a9887f3-c8e8-49ed-90d0-f055e7f70429",                        [{"hovertemplate":"Date=%{x}\u003cbr\u003eMarket Min ($\u002fMCF)=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"","line":{"color":"#15803d","dash":"solid","width":3},"marker":{"symbol":"circle","color":"#15803d","size":7},"mode":"lines+markers","name":"","orientation":"v","showlegend":false,"x":["2026-05-19T00:00:00.000000000"],"xaxis":"x","y":{"dtype":"f8","bdata":"ZDvfT42XCUA="},"yaxis":"y","type":"scatter"}],                        {"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"xaxis":{"anchor":"y","domain":[0.0,1.0],"title":{"text":"Date"},"tickformat":"%Y-%m-%d"},"yaxis":{"anchor":"x","domain":[0.0,1.0],"title":{"text":"Market Min ($\u002fMCF)"},"range":[0.5639499999999997,58.53505]},"legend":{"tracegroupgap":0},"margin":{"t":30,"b":40,"l":55,"r":20},"font":{"family":"-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif","color":"#1a2233"},"hovermode":"x unified","height":420,"paper_bgcolor":"white","plot_bgcolor":"#fafbfc","showlegend":false},                        {"responsive": true}                    )                };            </script>        </div></div><div class="chart-view" data-view="weather" hidden><div>                            <div id="b0086bdd-5837-4744-a42d-5bcc23ada904" class="plotly-graph-div" style="height:480px; width:100%;"></div>            <script type="text/javascript">                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("b0086bdd-5837-4744-a42d-5bcc23ada904")) {                    Plotly.newPlot(                        "b0086bdd-5837-4744-a42d-5bcc23ada904",                        [{"line":{"color":"#15803d","width":3},"marker":{"color":"#15803d","size":7},"mode":"lines+markers","name":"Market min ($\u002fMCF)","x":["2026-05-19T00:00:00.000000000"],"y":{"dtype":"f8","bdata":"ZDvfT42XCUA="},"type":"scatter"}],                        {"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"yaxis":{"title":{"text":"Rate ($\u002fMCF)"},"range":[0.5639499999999997,58.53505]},"xaxis":{"tickformat":"%Y-%m-%d"},"margin":{"t":30,"b":40,"l":55,"r":55},"font":{"family":"-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif","color":"#1a2233"},"legend":{"orientation":"h","yanchor":"bottom","y":1.02,"xanchor":"left","x":0},"hovermode":"x unified","height":480,"paper_bgcolor":"white","plot_bgcolor":"#fafbfc","showlegend":true,"yaxis2":{"title":{"text":"Temperature (\u00b0F)"},"overlaying":"y","side":"right","showgrid":false,"zeroline":false},"meta":{"weather_chart":true}},                        {"responsive": true}                    )                };            </script>        </div></div>
+    </div>
+    </details>
+    <details class="chart-section">
+    <summary>Long-term Trends &amp; Seasonality</summary>
+    <div class="chart-body">
+    <div class="chart-controls">
+    <label>View
+    <select id="trends-view-select">
+    <option value="weekly">Weekly (avg + min)</option>
+<option value="monthly">Monthly (avg + min)</option>
+<option value="yearly">Yearly (avg + min)</option>
+<option value="seasonality">Seasonality — when are rates lowest?</option>
+    </select>
+    </label>
+    </div>
+    <div class="trend-view" data-trend="weekly"><div class="data-warning">Have 0.1 weeks of data. Need ~8+ weeks for a meaningful weekly trend.</div><div>                            <div id="299afe31-3264-47ab-a340-f6d9cad4ea43" class="plotly-graph-div" style="height:420px; width:100%;"></div>            <script type="text/javascript">                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("299afe31-3264-47ab-a340-f6d9cad4ea43")) {                    Plotly.newPlot(                        "299afe31-3264-47ab-a340-f6d9cad4ea43",                        [{"line":{"color":"#1a2233","width":2},"marker":{"size":7},"mode":"lines+markers","name":"Avg ($\u002fMCF)","x":["2026-05-18T00:00:00.000000000"],"y":{"dtype":"f8","bdata":"yQxamW2iJEA="},"type":"scatter"},{"line":{"color":"#15803d","dash":"dot","width":2},"marker":{"size":7},"mode":"lines+markers","name":"Min ($\u002fMCF)","x":["2026-05-18T00:00:00.000000000"],"y":{"dtype":"f8","bdata":"ZDvfT42XCUA="},"type":"scatter"}],                        {"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"yaxis":{"title":{"text":"Rate ($\u002fMCF)"}},"xaxis":{"tickformat":"%Y-%m-%d"},"margin":{"t":30,"b":40,"l":55,"r":20},"font":{"family":"-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif","color":"#1a2233"},"legend":{"orientation":"h","yanchor":"bottom","y":1.02,"xanchor":"left","x":0},"hovermode":"x unified","height":420,"paper_bgcolor":"white","plot_bgcolor":"#fafbfc","showlegend":true},                        {"responsive": true}                    )                };            </script>        </div></div><div class="trend-view" data-trend="monthly" hidden><div class="data-warning">Have 0.0 months of data. Need ~6+ months for a meaningful monthly trend.</div><div>                            <div id="4589e2be-1e1a-4777-a133-6ae0cbd7cd3b" class="plotly-graph-div" style="height:420px; width:100%;"></div>            <script type="text/javascript">                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("4589e2be-1e1a-4777-a133-6ae0cbd7cd3b")) {                    Plotly.newPlot(                        "4589e2be-1e1a-4777-a133-6ae0cbd7cd3b",                        [{"line":{"color":"#1a2233","width":2},"marker":{"size":7},"mode":"lines+markers","name":"Avg ($\u002fMCF)","x":["2026-05-01T00:00:00.000000000"],"y":{"dtype":"f8","bdata":"yQxamW2iJEA="},"type":"scatter"},{"line":{"color":"#15803d","dash":"dot","width":2},"marker":{"size":7},"mode":"lines+markers","name":"Min ($\u002fMCF)","x":["2026-05-01T00:00:00.000000000"],"y":{"dtype":"f8","bdata":"ZDvfT42XCUA="},"type":"scatter"},{"line":{"color":"#3b82f6","dash":"dash","width":2},"mode":"lines","name":"Ohio residential avg (EIA)","x":["2001-01-01T00:00:00.000000","2001-02-01T00:00:00.000000","2001-03-01T00:00:00.000000","2001-04-01T00:00:00.000000","2001-05-01T00:00:00.000000","2001-06-01T00:00:00.000000","2001-07-01T00:00:00.000000","2001-08-01T00:00:00.000000","2001-09-01T00:00:00.000000","2001-10-01T00:00:00.000000","2001-11-01T00:00:00.000000","2001-12-01T00:00:00.000000","2002-01-01T00:00:00.000000","2002-02-01T00:00:00.000000","2002-03-01T00:00:00.000000","2002-04-01T00:00:00.000000","2002-05-01T00:00:00.000000","2002-06-01T00:00:00.000000","2002-07-01T00:00:00.000000","2002-08-01T00:00:00.000000","2002-09-01T00:00:00.000000","2002-10-01T00:00:00.000000","2002-11-01T00:00:00.000000","2002-12-01T00:00:00.000000","2003-01-01T00:00:00.000000","2003-02-01T00:00:00.000000","2003-03-01T00:00:00.000000","2003-04-01T00:00:00.000000","2003-05-01T00:00:00.000000","2003-06-01T00:00:00.000000","2003-07-01T00:00:00.000000","2003-08-01T00:00:00.000000","2003-09-01T00:00:00.000000","2003-10-01T00:00:00.000000","2003-11-01T00:00:00.000000","2003-12-01T00:00:00.000000","2004-01-01T00:00:00.000000","2004-02-01T00:00:00.000000","2004-03-01T00:00:00.000000","2004-04-01T00:00:00.000000","2004-05-01T00:00:00.000000","2004-06-01T00:00:00.000000","2004-07-01T00:00:00.000000","2004-08-01T00:00:00.000000","2004-09-01T00:00:00.000000","2004-10-01T00:00:00.000000","2004-11-01T00:00:00.000000","2004-12-01T00:00:00.000000","2005-01-01T00:00:00.000000","2005-02-01T00:00:00.000000","2005-03-01T00:00:00.000000","2005-04-01T00:00:00.000000","2005-05-01T00:00:00.000000","2005-06-01T00:00:00.000000","2005-07-01T00:00:00.000000","2005-08-01T00:00:00.000000","2005-09-01T00:00:00.000000","2005-10-01T00:00:00.000000","2005-11-01T00:00:00.000000","2005-12-01T00:00:00.000000","2006-01-01T00:00:00.000000","2006-02-01T00:00:00.000000","2006-03-01T00:00:00.000000","2006-04-01T00:00:00.000000","2006-05-01T00:00:00.000000","2006-06-01T00:00:00.000000","2006-07-01T00:00:00.000000","2006-08-01T00:00:00.000000","2006-09-01T00:00:00.000000","2006-10-01T00:00:00.000000","2006-11-01T00:00:00.000000","2006-12-01T00:00:00.000000","2007-01-01T00:00:00.000000","2007-02-01T00:00:00.000000","2007-03-01T00:00:00.000000","2007-04-01T00:00:00.000000","2007-05-01T00:00:00.000000","2007-06-01T00:00:00.000000","2007-07-01T00:00:00.000000","2007-08-01T00:00:00.000000","2007-09-01T00:00:00.000000","2007-10-01T00:00:00.000000","2007-11-01T00:00:00.000000","2007-12-01T00:00:00.000000","2008-01-01T00:00:00.000000","2008-02-01T00:00:00.000000","2008-03-01T00:00:00.000000","2008-04-01T00:00:00.000000","2008-05-01T00:00:00.000000","2008-06-01T00:00:00.000000","2008-07-01T00:00:00.000000","2008-08-01T00:00:00.000000","2008-09-01T00:00:00.000000","2008-10-01T00:00:00.000000","2008-11-01T00:00:00.000000","2008-12-01T00:00:00.000000","2009-01-01T00:00:00.000000","2009-02-01T00:00:00.000000","2009-03-01T00:00:00.000000","2009-04-01T00:00:00.000000","2009-05-01T00:00:00.000000","2009-06-01T00:00:00.000000","2009-07-01T00:00:00.000000","2009-08-01T00:00:00.000000","2009-09-01T00:00:00.000000","2009-10-01T00:00:00.000000","2009-11-01T00:00:00.000000","2009-12-01T00:00:00.000000","2010-01-01T00:00:00.000000","2010-02-01T00:00:00.000000","2010-03-01T00:00:00.000000","2010-04-01T00:00:00.000000","2010-05-01T00:00:00.000000","2010-06-01T00:00:00.000000","2010-07-01T00:00:00.000000","2010-08-01T00:00:00.000000","2010-09-01T00:00:00.000000","2010-10-01T00:00:00.000000","2010-11-01T00:00:00.000000","2010-12-01T00:00:00.000000","2011-01-01T00:00:00.000000","2011-02-01T00:00:00.000000","2011-03-01T00:00:00.000000","2011-04-01T00:00:00.000000","2011-05-01T00:00:00.000000","2011-06-01T00:00:00.000000","2011-07-01T00:00:00.000000","2011-08-01T00:00:00.000000","2011-09-01T00:00:00.000000","2011-10-01T00:00:00.000000","2011-11-01T00:00:00.000000","2011-12-01T00:00:00.000000","2012-01-01T00:00:00.000000","2012-02-01T00:00:00.000000","2012-03-01T00:00:00.000000","2012-04-01T00:00:00.000000","2012-05-01T00:00:00.000000","2012-06-01T00:00:00.000000","2012-07-01T00:00:00.000000","2012-08-01T00:00:00.000000","2012-09-01T00:00:00.000000","2012-10-01T00:00:00.000000","2012-11-01T00:00:00.000000","2012-12-01T00:00:00.000000","2013-01-01T00:00:00.000000","2013-02-01T00:00:00.000000","2013-03-01T00:00:00.000000","2013-04-01T00:00:00.000000","2013-05-01T00:00:00.000000","2013-06-01T00:00:00.000000","2013-07-01T00:00:00.000000","2013-08-01T00:00:00.000000","2013-09-01T00:00:00.000000","2013-10-01T00:00:00.000000","2013-11-01T00:00:00.000000","2013-12-01T00:00:00.000000","2014-01-01T00:00:00.000000","2014-02-01T00:00:00.000000","2014-03-01T00:00:00.000000","2014-04-01T00:00:00.000000","2014-05-01T00:00:00.000000","2014-06-01T00:00:00.000000","2014-07-01T00:00:00.000000","2014-08-01T00:00:00.000000","2014-09-01T00:00:00.000000","2014-10-01T00:00:00.000000","2014-11-01T00:00:00.000000","2014-12-01T00:00:00.000000","2015-01-01T00:00:00.000000","2015-02-01T00:00:00.000000","2015-03-01T00:00:00.000000","2015-04-01T00:00:00.000000","2015-05-01T00:00:00.000000","2015-06-01T00:00:00.000000","2015-07-01T00:00:00.000000","2015-08-01T00:00:00.000000","2015-09-01T00:00:00.000000","2015-10-01T00:00:00.000000","2015-11-01T00:00:00.000000","2015-12-01T00:00:00.000000","2016-01-01T00:00:00.000000","2016-02-01T00:00:00.000000","2016-03-01T00:00:00.000000","2016-04-01T00:00:00.000000","2016-05-01T00:00:00.000000","2016-06-01T00:00:00.000000","2016-07-01T00:00:00.000000","2016-08-01T00:00:00.000000","2016-09-01T00:00:00.000000","2016-10-01T00:00:00.000000","2016-11-01T00:00:00.000000","2016-12-01T00:00:00.000000","2017-01-01T00:00:00.000000","2017-02-01T00:00:00.000000","2017-03-01T00:00:00.000000","2017-04-01T00:00:00.000000","2017-05-01T00:00:00.000000","2017-06-01T00:00:00.000000","2017-07-01T00:00:00.000000","2017-08-01T00:00:00.000000","2017-09-01T00:00:00.000000","2017-10-01T00:00:00.000000","2017-11-01T00:00:00.000000","2017-12-01T00:00:00.000000","2018-01-01T00:00:00.000000","2018-02-01T00:00:00.000000","2018-03-01T00:00:00.000000","2018-04-01T00:00:00.000000","2018-05-01T00:00:00.000000","2018-06-01T00:00:00.000000","2018-07-01T00:00:00.000000","2018-08-01T00:00:00.000000","2018-09-01T00:00:00.000000","2018-10-01T00:00:00.000000","2018-11-01T00:00:00.000000","2018-12-01T00:00:00.000000","2019-01-01T00:00:00.000000","2019-02-01T00:00:00.000000","2019-03-01T00:00:00.000000","2019-04-01T00:00:00.000000","2019-05-01T00:00:00.000000","2019-06-01T00:00:00.000000","2019-07-01T00:00:00.000000","2019-08-01T00:00:00.000000","2019-09-01T00:00:00.000000","2019-10-01T00:00:00.000000","2019-11-01T00:00:00.000000","2019-12-01T00:00:00.000000","2020-01-01T00:00:00.000000","2020-02-01T00:00:00.000000","2020-03-01T00:00:00.000000","2020-04-01T00:00:00.000000","2020-05-01T00:00:00.000000","2020-06-01T00:00:00.000000","2020-07-01T00:00:00.000000","2020-08-01T00:00:00.000000","2020-09-01T00:00:00.000000","2020-10-01T00:00:00.000000","2020-11-01T00:00:00.000000","2020-12-01T00:00:00.000000","2021-01-01T00:00:00.000000","2021-02-01T00:00:00.000000","2021-03-01T00:00:00.000000","2021-04-01T00:00:00.000000","2021-05-01T00:00:00.000000","2021-06-01T00:00:00.000000","2021-07-01T00:00:00.000000","2021-08-01T00:00:00.000000","2021-09-01T00:00:00.000000","2021-10-01T00:00:00.000000","2021-11-01T00:00:00.000000","2021-12-01T00:00:00.000000","2022-01-01T00:00:00.000000","2022-02-01T00:00:00.000000","2022-03-01T00:00:00.000000","2022-04-01T00:00:00.000000","2022-05-01T00:00:00.000000","2022-06-01T00:00:00.000000","2022-07-01T00:00:00.000000","2022-08-01T00:00:00.000000","2022-09-01T00:00:00.000000","2022-10-01T00:00:00.000000","2022-11-01T00:00:00.000000","2022-12-01T00:00:00.000000","2023-01-01T00:00:00.000000","2023-02-01T00:00:00.000000","2023-03-01T00:00:00.000000","2023-04-01T00:00:00.000000","2023-05-01T00:00:00.000000","2023-06-01T00:00:00.000000","2023-07-01T00:00:00.000000","2023-08-01T00:00:00.000000","2023-09-01T00:00:00.000000","2023-10-01T00:00:00.000000","2023-11-01T00:00:00.000000","2023-12-01T00:00:00.000000","2024-01-01T00:00:00.000000","2024-02-01T00:00:00.000000","2024-03-01T00:00:00.000000","2024-04-01T00:00:00.000000","2024-05-01T00:00:00.000000","2024-06-01T00:00:00.000000","2024-07-01T00:00:00.000000","2024-08-01T00:00:00.000000","2024-09-01T00:00:00.000000","2024-10-01T00:00:00.000000","2024-11-01T00:00:00.000000","2024-12-01T00:00:00.000000","2025-01-01T00:00:00.000000","2025-02-01T00:00:00.000000","2025-03-01T00:00:00.000000","2025-04-01T00:00:00.000000","2025-05-01T00:00:00.000000","2025-06-01T00:00:00.000000","2025-07-01T00:00:00.000000","2025-08-01T00:00:00.000000","2025-09-01T00:00:00.000000","2025-10-01T00:00:00.000000","2025-11-01T00:00:00.000000","2025-12-01T00:00:00.000000","2026-01-01T00:00:00.000000","2026-02-01T00:00:00.000000"],"y":{"dtype":"f8","bdata":"mpmZmZkZIkBmZmZmZmYlQB+F61G4HiVApHA9CtcjJUAfhetRuB4nQAAAAAAAAChAMzMzMzMzKkBI4XoUrscjQI\u002fC9ShcjyRAcT0K16PwIUAzMzMzMzMdQHsUrkfhehxAexSuR+F6HUA9CtejcD0dQGZmZmZmZhtAPQrXo3A9HEAAAAAAAAAdQNejcD0KVyBArkfhehQuIkCF61G4HoUlQB+F61G4HiVAw\u002fUoXI9CIUCuR+F6FK4fQMP1KFyPwh5AMzMzMzMzH0DsUbgehesgQHsUrkfheiFAw\u002fUoXI\u002fCI0D2KFyPwvUkQI\u002fC9ShcDyhAmpmZmZmZKECPwvUoXA8oQAAAAAAAAChAw\u002fUoXI9CJEDhehSuR2EjQHE9Ctej8CJApHA9CtcjI0CamZmZmRkjQFK4HoXrUSNACtejcD0KJEAzMzMzMzMmQNejcD0KVylA9ihcj8J1KEAAAAAAAIArQHsUrkfheipAUrgehetRJ0A9CtejcL0mQLgehetRuCZAexSuR+H6JkBmZmZmZuYlQClcj8L1KCdArkfhehQuKUCuR+F6FK4pQPYoXI\u002fC9StAKVyPwvWoLkBcj8L1KNwvQGZmZmZm5jBASOF6FK7HMEAUrkfhehQuQArXo3A9Ci5AFK5H4XqULkB7FK5H4fotQK5H4XoULixA16NwPQpXLEDXo3A9ClcuQM3MzMzMzC9A9ihcj8K1MEC4HoXrUXgwQB+F61G43jBAAAAAAACAKkBcj8L1KNwoQArXo3A9CitA7FG4HoXrKUBmZmZmZmYpQBSuR+F6lCpAexSuR+H6KUAUrkfhepQuQAAAAAAAgDBAXI\u002fC9SjcMEA9CtejcH0wQNejcD0KFzBA4XoUrkdhLUCkcD0K1yMrQArXo3A9iipAmpmZmZkZKkAzMzMzMzMrQHE9Ctej8CtAFK5H4XoUL0DD9Shcj4IwQI\u002fC9ShcDzRASOF6FK6HNUAAAAAAAEA0QIXrUbgeBTJA16NwPQrXL0Bcj8L1KFwtQJqZmZmZmStApHA9CtejKUAAAAAAAAAqQBSuR+F6FCpAmpmZmZkZKUCkcD0K1yMuQMP1KFyPQjJAFK5H4XrUMkD2KFyPwjUyQNejcD0KFzFAUrgehevRJ0DhehSuR+EmQAAAAAAAgCNAcT0K16PwIkApXI\u002fC9SgjQHE9CtejcCRArkfhehQuKkDD9ShcjwIwQBSuR+F61DNAzczMzMyMNUBI4XoUroc2QB+F61G4HjRAmpmZmZkZK0DXo3A9ClckQB+F61G4HiNA7FG4HoVrIkC4HoXrUTgjQIXrUbgeBSNAMzMzMzMzJkBSuB6F69EqQFK4HoXrkTFAzczMzMzMNEAzMzMzM\u002fM2QK5H4XoUrjRA9ihcj8L1K0BmZmZmZmYkQIXrUbgehSFAH4XrUbgeIUCamZmZmRkgQI\u002fC9ShcDyFAexSuR+F6JUDNzMzMzMwrQOxRuB6FKzZAmpmZmZkZPEB7FK5H4fo9QK5H4XoUbjlA16NwPQpXLUBcj8L1KNwjQArXo3A9iiJAcT0K16NwHkDNzMzMzMweQI\u002fC9Shcjx9APQrXo3A9IkD2KFyPwnUqQKRwPQrX4zFASOF6FK7HNkD2KFyPwnU3QM3MzMzMzDVAzczMzMzMLkCF61G4HoUiQBSuR+F6FB9A16NwPQrXH0DXo3A9CtcgQK5H4XoUriFA4XoUrkfhI0CamZmZmRkrQM3MzMzMjDRAKVyPwvWoOEBI4XoUrkc5QM3MzMzMTDdACtejcD0KL0AfhetRuB4kQFK4HoXr0SFApHA9CtejH0ApXI\u002fC9SgeQBSuR+F6FB9AzczMzMxMIkCF61G4HgUrQLgehetR+DNAmpmZmZnZN0B7FK5H4Xo5QBSuR+F6VDhAPQrXo3C9LkDhehSuR2EjQKRwPQrXox1ApHA9CtejGUB7FK5H4XoZQEjhehSuRxxAw\u002fUoXI\u002fCH0CkcD0K1yMnQIXrUbgeBTNArkfhehQuOUC4HoXrUfg6QI\u002fC9ShczzlACtejcD2KMkAAAAAAAAAkQDMzMzMzMx9AhetRuB6FHEBSuB6F61EgQPYoXI\u002fC9R5ACtejcD2KJEA9CtejcL0sQClcj8L1qDdA4XoUrkdhOkBSuB6F61E7QClcj8L1aDdAZmZmZmZmLkCF61G4HoUhQBSuR+F6FBxArkfhehSuGUBSuB6F61EeQBSuR+F6FB1ApHA9CtcjIEBSuB6F69EtQFyPwvUoXDlApHA9CtdjOkBxPQrXo7A7QDMzMzMzczlApHA9CtcjKUB7FK5H4XogQNejcD0K1x9Aj8L1KFyPHUAK16NwPQodQNejcD0K1x1A16NwPQrXI0DD9Shcj0ItQArXo3A9SjdACtejcD1KO0BSuB6F61E9QEjhehSuxzxA4XoUrkfhLkBmZmZmZuYgQM3MzMzMzB1AKVyPwvUoHUDsUbgehesbQEjhehSuRx9AcT0K16PwIEAzMzMzMzMmQOxRuB6FKzdA9ihcj8L1OkCPwvUoXI88QNejcD0KFzdA16NwPQpXKkApXI\u002fC9SgjQOxRuB6F6x1AzczMzMzMHEDXo3A9CtccQNejcD0KVyFA16NwPQrXJUBxPQrXo3AtQI\u002fC9ShcDzlAUrgehevRPkBI4XoUrqdAQClcj8L1CEBApHA9CtejNUBxPQrXo3AnQOF6FK5HYSRAmpmZmZkZIkBcj8L1KNwiQArXo3A9CiVAhetRuB6FKECamZmZmVkzQDMzMzMz00BAcT0K16NwQkCuR+F6FK5CQHsUrkfhOkBASOF6FK7HMkBI4XoUrkcrQJqZmZmZGSdA7FG4HoVrJkCF61G4HoUlQGZmZmZm5iVAexSuR+F6KUBI4XoUrscxQEjhehSuxz9ApHA9CtejQUAzMzMzM9NCQJqZmZmZ2UFAKVyPwvWoM0AfhetRuB4nQOF6FK5H4SNAcT0K16PwIUDD9Shcj8IjQDMzMzMzsyVAzczMzMzMKkDNzMzMzAw5QFyPwvUo3EFApHA9CtcDREDhehSuR6FEQArXo3A9qkNASOF6FK5HNkBmZmZmZuYrQI\u002fC9ShcjyRAPQrXo3A9IkAUrkfhepQjQBSuR+F6FCdAmpmZmZmZLEApXI\u002fC9Sg2QHE9CtejMEJAFK5H4Xo0RkDXo3A9CrdHQLgehetRGERAPQrXo3D9NkApXI\u002fC9agqQAAAAAAAgCZAj8L1KFwPJkAfhetRuJ4pQA=="},"type":"scatter"}],                        {"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"yaxis":{"title":{"text":"Rate ($\u002fMCF)"}},"xaxis":{"tickformat":"%Y-%m-%d"},"margin":{"t":30,"b":40,"l":55,"r":20},"font":{"family":"-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif","color":"#1a2233"},"legend":{"orientation":"h","yanchor":"bottom","y":1.02,"xanchor":"left","x":0},"hovermode":"x unified","height":420,"paper_bgcolor":"white","plot_bgcolor":"#fafbfc","showlegend":true},                        {"responsive": true}                    )                };            </script>        </div></div><div class="trend-view" data-trend="yearly" hidden><div class="data-warning">Have 0.00 years of data. Need ≥2 years for a year-over-year view.</div><div>                            <div id="b02f21f9-31b6-401d-89d6-a8b40ba13313" class="plotly-graph-div" style="height:420px; width:100%;"></div>            <script type="text/javascript">                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("b02f21f9-31b6-401d-89d6-a8b40ba13313")) {                    Plotly.newPlot(                        "b02f21f9-31b6-401d-89d6-a8b40ba13313",                        [{"marker":{"color":"#1a2233"},"name":"Avg ($\u002fMCF)","x":["2026"],"y":{"dtype":"f8","bdata":"yQxamW2iJEA="},"type":"bar"},{"marker":{"color":"#15803d"},"name":"Min ($\u002fMCF)","x":["2026"],"y":{"dtype":"f8","bdata":"ZDvfT42XCUA="},"type":"bar"},{"marker":{"color":"#3b82f6"},"name":"Ohio residential avg (EIA)","x":["2001","2002","2003","2004","2005","2006","2007","2008","2009","2010","2011","2012","2013","2014","2015","2016","2017","2018","2019","2020","2021","2022","2023","2024","2025","2026"],"y":{"dtype":"f8","bdata":"7+7u7u4uJECx5BdLfnEgQKHTBjptgCRA84slv1iyJkDziyW\u002fWBIsQJDC9Shczy1A3d3d3d0dLUD5xZJfLGkwQMkvlvxiqSxASOF6FK5HLUA30GkDnfYrQK9H4XoUji9AseQXS35RK0BgLPnFkn8tQGkDnTbQqSxASOF6FK7HLECnDXTaQOctQAc6baDTpi1AnTbQaQMdL0BTuB6F6\u002fEsQBvotIFOyzFA+cWSXyxpNEB7FK5H4Wo0QFVVVVVVlTZAY8kvlvySN0DXo3A9CtcnQA=="},"type":"bar"}],                        {"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"yaxis":{"title":{"text":"Rate ($\u002fMCF)"}},"xaxis":{"title":{"text":"Year"},"tickformat":"%Y-%m-%d"},"barmode":"group","margin":{"t":30,"b":40,"l":55,"r":20},"font":{"family":"-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif","color":"#1a2233"},"legend":{"orientation":"h","yanchor":"bottom","y":1.02,"xanchor":"left","x":0},"hovermode":"x unified","height":420,"paper_bgcolor":"white","plot_bgcolor":"#fafbfc","showlegend":true},                        {"responsive": true}                    )                };            </script>        </div></div><div class="trend-view" data-trend="seasonality" hidden><div class="data-warning">Have 0.00 years of data covering 1 of 12 months. Need ≥2 years (ideally 3+) before the "lowest month" marker is reliable.</div><div>                            <div id="62dc45fe-d00e-4b73-874c-2397f79f2f3d" class="plotly-graph-div" style="height:460px; width:100%;"></div>            <script type="text/javascript">                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("62dc45fe-d00e-4b73-874c-2397f79f2f3d")) {                    Plotly.newPlot(                        "62dc45fe-d00e-4b73-874c-2397f79f2f3d",                        [{"hovertemplate":"%{x}\u003cbr\u003eAvg rate: %{y:.5f}\u003cextra\u003e\u003c\u002fextra\u003e","marker":{"color":["#e5e7eb","#e5e7eb","#e5e7eb","#e5e7eb","#15803d","#e5e7eb","#e5e7eb","#e5e7eb","#e5e7eb","#e5e7eb","#e5e7eb","#e5e7eb"]},"name":"Avg rate","showlegend":false,"text":["no data","no data","no data","no data","10.3172","no data","no data","no data","no data","no data","no data","no data"],"textposition":"outside","x":["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],"y":{"dtype":"f8","bdata":"AAAAAAAA+H8AAAAAAAD4fwAAAAAAAPh\u002fAAAAAAAA+H\u002fJDFqZbaIkQAAAAAAAAPh\u002fAAAAAAAA+H8AAAAAAAD4fwAAAAAAAPh\u002fAAAAAAAA+H8AAAAAAAD4fwAAAAAAAPh\u002f"},"type":"bar"},{"line":{"color":"#3b82f6","dash":"dash","width":2},"marker":{"color":"#3b82f6","size":8},"mode":"lines+markers","name":"Ohio residential avg (EIA, 25-yr)","x":["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],"y":{"dtype":"f8","bdata":"1r1DooqQIkCCko5PXxsjQATnjCjtjSNAv58aL90kJkCaCBueXiktQAbwFkhQ\u002fDRAo7Q3+MLkN0ByGw3gLdA4QOxRuB6F6zZA2\u002fl+arx0LkBSSZ2AJsIlQLByaJHtfCNA"},"type":"scatter"}],                        {"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"annotations":[{"arrowcolor":"#15803d","arrowhead":2,"ax":0,"ay":-40,"bgcolor":"white","bordercolor":"#15803d","borderpad":4,"borderwidth":1,"font":{"color":"#15803d","family":"-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif","size":12},"showarrow":true,"text":"\u2b07 Lowest avg\u003cbr\u003e(May)","x":"May","y":10.317242424242425}],"yaxis":{"title":{"text":"Avg rate ($\u002fMCF)"}},"xaxis":{"title":{"text":"Calendar month"},"tickformat":"%Y-%m-%d"},"margin":{"t":30,"b":40,"l":55,"r":20},"font":{"family":"-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif","color":"#1a2233"},"legend":{"orientation":"h","yanchor":"bottom","y":1.02,"xanchor":"left","x":0},"hovermode":"x unified","height":460,"paper_bgcolor":"white","plot_bgcolor":"#fafbfc","showlegend":true},                        {"responsive": true}                    )                };            </script>        </div></div>
+    </div>
+    </details>
+    </main>
+    <script>
+(function() {
+  var DATA = {"unit": "$/MCF", "usage_unit": "MCF", "dashboard_type": "gas", "min_by_util": {"Columbia Gas of PA": 3.199, "National Fuel Gas": 5.09, "PECO Gas": 4.59, "Peoples Natural Gas": 38.9, "Philadelphia Gas Works (PGW)": 7.1899999999999995, "UGI Utilities": 6.59}, "latest_date": "2026-05-19"};
+  var STORAGE_PREFIX = 'gAndETicker_' + DATA.dashboard_type + '_';
+  var IDS = ['calc-utility', 'calc-current-rate', 'calc-usage', 'calc-etf'];
+  function $(id) { return document.getElementById(id); }
+  function loadInputs() {
+    IDS.forEach(function(id) {
+      var saved = localStorage.getItem(STORAGE_PREFIX + id);
+      if (saved !== null) $(id).value = saved;
+    });
+  }
+  function saveInputs() {
+    IDS.forEach(function(id) {
+      localStorage.setItem(STORAGE_PREFIX + id, $(id).value);
+    });
+  }
+  function fmtMoney(n) {
+    return '$' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  }
+  function render() {
+    saveInputs();
+    var util = $('calc-utility').value;
+    var myRate = parseFloat($('calc-current-rate').value);
+    var usage = parseFloat($('calc-usage').value);
+    var etf = parseFloat($('calc-etf').value) || 0;
+    var results = $('calc-results');
+    if (!util || isNaN(myRate) || isNaN(usage) || usage <= 0) {
+      results.innerHTML = '<p class="calc-prompt">Enter your utility, current rate, and monthly usage to see savings.</p>';
+      return;
+    }
+    var minRate = DATA.min_by_util[util];
+    if (minRate === undefined) {
+      results.innerHTML = '<p class="calc-prompt">No current rate data for ' + util + '.</p>';
+      return;
+    }
+    var monthlyDiff = (myRate - minRate) * usage;
+    var yearlyDiff = monthlyDiff * 12;
+    var html = '';
+    html += '<p style="margin:0 0 12px;color:#555;font-size:0.95em;">Comparing your <b>' + myRate.toFixed(5) + ' ' + DATA.unit + '</b> rate against ' + util + ' current daily minimum of <b>' + minRate.toFixed(5) + ' ' + DATA.unit + '</b> (as of ' + DATA.latest_date + ').</p>';
+    if (monthlyDiff <= 0) {
+      html += '<p class="calc-neutral">Your rate is already at or below the current minimum. No switch needed.</p>';
+    } else {
+      html += '<p class="calc-win">Switching could save you:</p><ul>';
+      html += '<li>' + fmtMoney(monthlyDiff) + ' / month</li>';
+      html += '<li>' + fmtMoney(yearlyDiff) + ' / year</li>';
+      if (etf > 0) {
+        var be = Math.ceil(etf / monthlyDiff);
+        html += '<li>Breakeven on ' + fmtMoney(etf) + ' early-termination fee: <b>' + be + ' month' + (be === 1 ? '' : 's') + '</b></li>';
+      }
+      html += '</ul>';
+    }
+    results.innerHTML = html;
+    $('calc-share-container').style.display = (monthlyDiff > 0) ? 'block' : 'none';
+  }
+  document.addEventListener('DOMContentLoaded', function() {
+    loadInputs();
+    IDS.forEach(function(id) {
+      var el = $(id);
+      el.addEventListener('input', render);
+      el.addEventListener('change', function() {
+        render();
+      });
+    });
+
+    // Share Logic
+    $('btn-share').addEventListener('click', function() {
+      var util = $('calc-utility').value;
+      var myRate = parseFloat($('calc-current-rate').value);
+      var usage = parseFloat($('calc-usage').value);
+      var minRate = DATA.min_by_util[util];
+      var yearlyDiff = (myRate - minRate) * usage * 12;
+      var msg = 'I could save ' + fmtMoney(yearlyDiff) + ' / year on my ' + DATA.dashboard_type + ' bill! Check your savings at RateSavvy: ' + window.location.href;
+      if (navigator.share) {
+        navigator.share({ title: 'RateSavvy', text: msg, url: window.location.href }).catch(function(e) { console.error('Error sharing:', e); });
+      } else {
+        navigator.clipboard.writeText(msg).then(function() {
+          alert('Sharing message copied to clipboard!');
+        });
+      }
+    });
+
+    render();
+  });
+})();
+</script>
+    <script>
+(function() {
+  var PAYLOAD = {"unit": "$/MCF", "data": {"all": [{"utility": "Columbia Gas of PA", "supplier": "Energy Harbor", "term": 6, "rate": 3.199, "bbb": null, "bbb_url": null}, {"utility": "Columbia Gas of PA", "supplier": "Pennsylvania Gas & Electric", "term": 6, "rate": 3.6670000000000003, "bbb": null, "bbb_url": null}, {"utility": "Columbia Gas of PA", "supplier": "Energy Harbor", "term": 12, "rate": 3.9989999999999997, "bbb": null, "bbb_url": null}], "6": [{"utility": "Columbia Gas of PA", "supplier": "Energy Harbor", "term": 6, "rate": 3.199, "bbb": null, "bbb_url": null}, {"utility": "Columbia Gas of PA", "supplier": "Pennsylvania Gas & Electric", "term": 6, "rate": 3.6670000000000003, "bbb": null, "bbb_url": null}, {"utility": "Columbia Gas of PA", "supplier": "Direct Energy", "term": 6, "rate": 4.09, "bbb": null, "bbb_url": null}], "7": [{"utility": "PECO Gas", "supplier": "Direct Energy", "term": 7, "rate": 5.49, "bbb": null, "bbb_url": null}, {"utility": "UGI Utilities", "supplier": "Direct Energy", "term": 7, "rate": 6.889999999999999, "bbb": null, "bbb_url": null}], "8": [{"utility": "National Fuel Gas", "supplier": "IDT Energy Inc", "term": 8, "rate": 8.257, "bbb": null, "bbb_url": null}, {"utility": "UGI Utilities", "supplier": "IDT Energy Inc", "term": 8, "rate": 9.068999999999999, "bbb": null, "bbb_url": null}, {"utility": "PECO Gas", "supplier": "IDT Energy Inc", "term": 8, "rate": 9.146999999999998, "bbb": null, "bbb_url": null}], "10": [{"utility": "National Fuel Gas", "supplier": "Pennsylvania Gas & Electric", "term": 10, "rate": 5.2, "bbb": null, "bbb_url": null}, {"utility": "UGI Utilities", "supplier": "Pennsylvania Gas & Electric", "term": 10, "rate": 7.6499999999999995, "bbb": null, "bbb_url": null}, {"utility": "Peoples Natural Gas", "supplier": "Pennsylvania Gas & Electric", "term": 10, "rate": 39.0, "bbb": null, "bbb_url": null}], "12": [{"utility": "Columbia Gas of PA", "supplier": "Energy Harbor", "term": 12, "rate": 3.9989999999999997, "bbb": null, "bbb_url": null}, {"utility": "Columbia Gas of PA", "supplier": "Pennsylvania Gas & Electric", "term": 12, "rate": 4.39, "bbb": null, "bbb_url": null}, {"utility": "PECO Gas", "supplier": "Pennsylvania Gas & Electric", "term": 12, "rate": 4.989999999999999, "bbb": null, "bbb_url": null}], "15": [{"utility": "National Fuel Gas", "supplier": "Pennsylvania Gas & Electric", "term": 15, "rate": 5.2, "bbb": null, "bbb_url": null}, {"utility": "UGI Utilities", "supplier": "Pennsylvania Gas & Electric", "term": 15, "rate": 7.9990000000000006, "bbb": null, "bbb_url": null}, {"utility": "Peoples Natural Gas", "supplier": "Pennsylvania Gas & Electric", "term": 15, "rate": 39.0, "bbb": null, "bbb_url": null}], "18": [{"utility": "Columbia Gas of PA", "supplier": "Pennsylvania Gas & Electric", "term": 18, "rate": 4.39, "bbb": null, "bbb_url": null}, {"utility": "PECO Gas", "supplier": "Pennsylvania Gas & Electric", "term": 18, "rate": 4.89, "bbb": null, "bbb_url": null}, {"utility": "Columbia Gas of PA", "supplier": "Direct Energy", "term": 18, "rate": 5.6899999999999995, "bbb": null, "bbb_url": null}], "24": [{"utility": "Columbia Gas of PA", "supplier": "Pennsylvania Gas & Electric", "term": 24, "rate": 4.39, "bbb": null, "bbb_url": null}, {"utility": "Columbia Gas of PA", "supplier": "Energy Harbor", "term": 24, "rate": 4.499, "bbb": null, "bbb_url": null}, {"utility": "PECO Gas", "supplier": "Pennsylvania Gas & Electric", "term": 24, "rate": 4.989999999999999, "bbb": null, "bbb_url": null}], "36": [{"utility": "Columbia Gas of PA", "supplier": "Energy Harbor", "term": 36, "rate": 4.499, "bbb": null, "bbb_url": null}, {"utility": "Columbia Gas of PA", "supplier": "Pennsylvania Gas & Electric", "term": 36, "rate": 4.59, "bbb": null, "bbb_url": null}, {"utility": "PECO Gas", "supplier": "Pennsylvania Gas & Electric", "term": 36, "rate": 4.989999999999999, "bbb": null, "bbb_url": null}]}, "by_util": {"Columbia Gas of PA": {"all": [{"utility": "Columbia Gas of PA", "supplier": "Energy Harbor", "term": 6, "rate": 3.199, "bbb": null, "bbb_url": null}, {"utility": "Columbia Gas of PA", "supplier": "Pennsylvania Gas & Electric", "term": 6, "rate": 3.6670000000000003, "bbb": null, "bbb_url": null}, {"utility": "Columbia Gas of PA", "supplier": "Energy Harbor", "term": 12, "rate": 3.9989999999999997, "bbb": null, "bbb_url": null}], "6": [{"utility": "Columbia Gas of PA", "supplier": "Energy Harbor", "term": 6, "rate": 3.199, "bbb": null, "bbb_url": null}, {"utility": "Columbia Gas of PA", "supplier": "Pennsylvania Gas & Electric", "term": 6, "rate": 3.6670000000000003, "bbb": null, "bbb_url": null}, {"utility": "Columbia Gas of PA", "supplier": "Direct Energy", "term": 6, "rate": 4.09, "bbb": null, "bbb_url": null}], "7": [], "8": [], "10": [], "12": [{"utility": "Columbia Gas of PA", "supplier": "Energy Harbor", "term": 12, "rate": 3.9989999999999997, "bbb": null, "bbb_url": null}, {"utility": "Columbia Gas of PA", "supplier": "Pennsylvania Gas & Electric", "term": 12, "rate": 4.39, "bbb": null, "bbb_url": null}, {"utility": "Columbia Gas of PA", "supplier": "Symmetry Energy Solutions LLC", "term": 12, "rate": 5.25, "bbb": null, "bbb_url": null}], "15": [], "18": [{"utility": "Columbia Gas of PA", "supplier": "Pennsylvania Gas & Electric", "term": 18, "rate": 4.39, "bbb": null, "bbb_url": null}, {"utility": "Columbia Gas of PA", "supplier": "Direct Energy", "term": 18, "rate": 5.6899999999999995, "bbb": null, "bbb_url": null}], "24": [{"utility": "Columbia Gas of PA", "supplier": "Pennsylvania Gas & Electric", "term": 24, "rate": 4.39, "bbb": null, "bbb_url": null}, {"utility": "Columbia Gas of PA", "supplier": "Energy Harbor", "term": 24, "rate": 4.499, "bbb": null, "bbb_url": null}, {"utility": "Columbia Gas of PA", "supplier": "Symmetry Energy Solutions LLC", "term": 24, "rate": 5.25, "bbb": null, "bbb_url": null}], "36": [{"utility": "Columbia Gas of PA", "supplier": "Energy Harbor", "term": 36, "rate": 4.499, "bbb": null, "bbb_url": null}, {"utility": "Columbia Gas of PA", "supplier": "Pennsylvania Gas & Electric", "term": 36, "rate": 4.59, "bbb": null, "bbb_url": null}, {"utility": "Columbia Gas of PA", "supplier": "Symmetry Energy Solutions LLC", "term": 36, "rate": 5.55, "bbb": null, "bbb_url": null}]}, "PECO Gas": {"all": [{"utility": "PECO Gas", "supplier": "Pennsylvania Gas & Electric", "term": 6, "rate": 4.59, "bbb": null, "bbb_url": null}, {"utility": "PECO Gas", "supplier": "Pennsylvania Gas & Electric", "term": 18, "rate": 4.89, "bbb": null, "bbb_url": null}, {"utility": "PECO Gas", "supplier": "Pennsylvania Gas & Electric", "term": 24, "rate": 4.989999999999999, "bbb": null, "bbb_url": null}], "6": [{"utility": "PECO Gas", "supplier": "Pennsylvania Gas & Electric", "term": 6, "rate": 4.59, "bbb": null, "bbb_url": null}, {"utility": "PECO Gas", "supplier": "Frontier Utilities", "term": 6, "rate": 10.69, "bbb": null, "bbb_url": null}], "7": [{"utility": "PECO Gas", "supplier": "Direct Energy", "term": 7, "rate": 5.49, "bbb": null, "bbb_url": null}], "8": [{"utility": "PECO Gas", "supplier": "IDT Energy Inc", "term": 8, "rate": 9.146999999999998, "bbb": null, "bbb_url": null}, {"utility": "PECO Gas", "supplier": "Residents Energy", "term": 8, "rate": 9.146999999999998, "bbb": null, "bbb_url": null}], "10": [], "12": [{"utility": "PECO Gas", "supplier": "Pennsylvania Gas & Electric", "term": 12, "rate": 4.989999999999999, "bbb": null, "bbb_url": null}, {"utility": "PECO Gas", "supplier": "Shipley Energy", "term": 12, "rate": 5.989999999999999, "bbb": null, "bbb_url": null}, {"utility": "PECO Gas", "supplier": "Direct Energy", "term": 12, "rate": 6.09, "bbb": null, "bbb_url": null}], "15": [], "18": [{"utility": "PECO Gas", "supplier": "Pennsylvania Gas & Electric", "term": 18, "rate": 4.89, "bbb": null, "bbb_url": null}, {"utility": "PECO Gas", "supplier": "Direct Energy", "term": 18, "rate": 6.1899999999999995, "bbb": null, "bbb_url": null}], "24": [{"utility": "PECO Gas", "supplier": "Pennsylvania Gas & Electric", "term": 24, "rate": 4.989999999999999, "bbb": null, "bbb_url": null}], "36": [{"utility": "PECO Gas", "supplier": "Pennsylvania Gas & Electric", "term": 36, "rate": 4.989999999999999, "bbb": null, "bbb_url": null}]}, "National Fuel Gas": {"all": [{"utility": "National Fuel Gas", "supplier": "Pennsylvania Gas & Electric", "term": 12, "rate": 5.09, "bbb": null, "bbb_url": null}, {"utility": "National Fuel Gas", "supplier": "Pennsylvania Gas & Electric", "term": 15, "rate": 5.2, "bbb": null, "bbb_url": null}, {"utility": "National Fuel Gas", "supplier": "Pennsylvania Gas & Electric", "term": 10, "rate": 5.2, "bbb": null, "bbb_url": null}], "6": [{"utility": "National Fuel Gas", "supplier": "Major Energy Services", "term": 6, "rate": 5.799999999999999, "bbb": null, "bbb_url": null}], "7": [], "8": [{"utility": "National Fuel Gas", "supplier": "IDT Energy Inc", "term": 8, "rate": 8.257, "bbb": null, "bbb_url": null}], "10": [{"utility": "National Fuel Gas", "supplier": "Pennsylvania Gas & Electric", "term": 10, "rate": 5.2, "bbb": null, "bbb_url": null}], "12": [{"utility": "National Fuel Gas", "supplier": "Pennsylvania Gas & Electric", "term": 12, "rate": 5.09, "bbb": null, "bbb_url": null}, {"utility": "National Fuel Gas", "supplier": "Major Energy Services", "term": 12, "rate": 5.699999999999999, "bbb": null, "bbb_url": null}, {"utility": "National Fuel Gas", "supplier": "Ambit Energy", "term": 12, "rate": 6.8999999999999995, "bbb": null, "bbb_url": null}], "15": [{"utility": "National Fuel Gas", "supplier": "Pennsylvania Gas & Electric", "term": 15, "rate": 5.2, "bbb": null, "bbb_url": null}], "18": [], "24": [], "36": []}, "UGI Utilities": {"all": [{"utility": "UGI Utilities", "supplier": "Shipley Energy", "term": 12, "rate": 6.59, "bbb": null, "bbb_url": null}, {"utility": "UGI Utilities", "supplier": "Direct Energy", "term": 7, "rate": 6.889999999999999, "bbb": null, "bbb_url": null}, {"utility": "UGI Utilities", "supplier": "Major Energy Services", "term": 12, "rate": 6.989999999999999, "bbb": null, "bbb_url": null}], "6": [{"utility": "UGI Utilities", "supplier": "Frontier Utilities", "term": 6, "rate": 7.99, "bbb": null, "bbb_url": null}], "7": [{"utility": "UGI Utilities", "supplier": "Direct Energy", "term": 7, "rate": 6.889999999999999, "bbb": null, "bbb_url": null}], "8": [{"utility": "UGI Utilities", "supplier": "IDT Energy Inc", "term": 8, "rate": 9.068999999999999, "bbb": null, "bbb_url": null}], "10": [{"utility": "UGI Utilities", "supplier": "Pennsylvania Gas & Electric", "term": 10, "rate": 7.6499999999999995, "bbb": null, "bbb_url": null}], "12": [{"utility": "UGI Utilities", "supplier": "Shipley Energy", "term": 12, "rate": 6.59, "bbb": null, "bbb_url": null}, {"utility": "UGI Utilities", "supplier": "Major Energy Services", "term": 12, "rate": 6.989999999999999, "bbb": null, "bbb_url": null}, {"utility": "UGI Utilities", "supplier": "Verde Energy USA Pennsylvania LLC", "term": 12, "rate": 7.289999999999999, "bbb": null, "bbb_url": null}], "15": [{"utility": "UGI Utilities", "supplier": "Pennsylvania Gas & Electric", "term": 15, "rate": 7.9990000000000006, "bbb": null, "bbb_url": null}], "18": [{"utility": "UGI Utilities", "supplier": "Direct Energy", "term": 18, "rate": 7.89, "bbb": null, "bbb_url": null}], "24": [], "36": []}, "Philadelphia Gas Works (PGW)": {"all": [{"utility": "Philadelphia Gas Works (PGW)", "supplier": "Shipley Energy", "term": 12, "rate": 7.1899999999999995, "bbb": null, "bbb_url": null}, {"utility": "Philadelphia Gas Works (PGW)", "supplier": "City Power & Gas PA", "term": 12, "rate": 9.081999999999999, "bbb": null, "bbb_url": null}], "6": [], "7": [], "8": [], "10": [], "12": [{"utility": "Philadelphia Gas Works (PGW)", "supplier": "Shipley Energy", "term": 12, "rate": 7.1899999999999995, "bbb": null, "bbb_url": null}, {"utility": "Philadelphia Gas Works (PGW)", "supplier": "City Power & Gas PA", "term": 12, "rate": 9.081999999999999, "bbb": null, "bbb_url": null}], "15": [], "18": [], "24": [], "36": []}, "Peoples Natural Gas": {"all": [{"utility": "Peoples Natural Gas", "supplier": "Symmetry Energy Solutions LLC", "term": 12, "rate": 38.9, "bbb": null, "bbb_url": null}, {"utility": "Peoples Natural Gas", "supplier": "Pennsylvania Gas & Electric", "term": 15, "rate": 39.0, "bbb": null, "bbb_url": null}, {"utility": "Peoples Natural Gas", "supplier": "Pennsylvania Gas & Electric", "term": 12, "rate": 39.0, "bbb": null, "bbb_url": null}], "6": [{"utility": "Peoples Natural Gas", "supplier": "Verde Energy USA Pennsylvania LLC", "term": 6, "rate": 55.9, "bbb": null, "bbb_url": null}], "7": [], "8": [{"utility": "Peoples Natural Gas", "supplier": "Symmetry Energy Solutions LLC", "term": 8, "rate": 42.5, "bbb": null, "bbb_url": null}], "10": [{"utility": "Peoples Natural Gas", "supplier": "Pennsylvania Gas & Electric", "term": 10, "rate": 39.0, "bbb": null, "bbb_url": null}], "12": [{"utility": "Peoples Natural Gas", "supplier": "Symmetry Energy Solutions LLC", "term": 12, "rate": 38.9, "bbb": null, "bbb_url": null}, {"utility": "Peoples Natural Gas", "supplier": "Pennsylvania Gas & Electric", "term": 12, "rate": 39.0, "bbb": null, "bbb_url": null}, {"utility": "Peoples Natural Gas", "supplier": "Verde Energy USA Pennsylvania LLC", "term": 12, "rate": 55.9, "bbb": null, "bbb_url": null}], "15": [{"utility": "Peoples Natural Gas", "supplier": "Pennsylvania Gas & Electric", "term": 15, "rate": 39.0, "bbb": null, "bbb_url": null}], "18": [], "24": [], "36": []}}, "top_n": 3};
+  var sel = document.getElementById('top-rates-term-select');
+  var tbody = document.getElementById('top-rates-tbody');
+  if (!sel || !tbody) return;
+  function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
+  function bbbPill(supplier, rating, url) {
+    var href = url || ('https://www.google.com/search?q=' + encodeURIComponent(supplier + ' BBB rating'));
+    if (rating) {
+      var head = rating.trim().toUpperCase().replace('+', '').substring(0, 1);
+      var cls = (head === 'A' || head === 'B') ? 'bbb-good' : (head === 'D' || head === 'F') ? 'bbb-poor' : 'bbb-mid';
+      return '<a class="bbb-pill ' + cls + '" href="' + href + '" target="_blank" rel="noopener" title="BBB rating: ' + esc(rating) + '">' + esc(rating) + '</a>';
+    }
+    return '<a class="bbb-pill bbb-unknown" href="' + href + '" target="_blank" rel="noopener" title="No rating cached — click to look up">—</a>';
+  }
+  function getSelectedUtility() {
+    try {
+      var saved = JSON.parse(localStorage.getItem('oet_selection_v1') || '{}');
+      var fuel = document.body.getAttribute('data-dashboard') || 'electric';
+      var u = saved.utilities && saved.utilities[fuel];
+      return (u && u !== 'all') ? u : null;
+    } catch (e) { return null; }
+  }
+  function render() {
+    var term = sel.value;
+    var util = getSelectedUtility();
+    var rows;
+    if (util && PAYLOAD.by_util && PAYLOAD.by_util[util]) {
+      rows = PAYLOAD.by_util[util][term] || [];
+    } else {
+      rows = PAYLOAD.data[term] || [];
+    }
+    var heading = document.getElementById('top-rates-heading');
+    if (heading) {
+      var n = PAYLOAD.top_n || 3;
+      heading.textContent = util ? ('Top ' + n + ' Rates for ' + util) : ('Top ' + n + ' Rates Right Now');
+    }
+    if (rows.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty-cell">No data for that term.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.map(function(r, i) {
+      return '<tr>' +
+        '<td class="rank-cell">' + (i + 1) + '</td>' +
+        '<td>' + esc(r.utility) + '</td>' +
+        '<td>' + esc(r.supplier) + '</td>' +
+        '<td>' + bbbPill(r.supplier, r.bbb, r.bbb_url) + '</td>' +
+        '<td>' + r.term + ' Mo</td>' +
+        '<td class="rate-cell">' + r.rate.toFixed(5) + '</td>' +
+      '</tr>';
+    }).join('');
+  }
+  // expose so the utility selector can trigger re-render after changes
+  window.__renderTopRates = render;
+  var KEY = 'gAndETicker_top_rates_term_' + (document.body.getAttribute('data-dashboard') || 'x');
+  var saved = localStorage.getItem(KEY);
+  if (saved && [].some.call(sel.options, function(o) { return o.value === saved; })) {
+    sel.value = saved;
+  }
+  sel.addEventListener('change', function() {
+    localStorage.setItem(KEY, sel.value);
+    render();
+  });
+  render();
+})();
+</script>
+    <script>
+(function() {
+  var DASH = document.body.getAttribute('data-dashboard') || 'x';
+  function bind(selectId, viewAttr, viewClass) {
+    var sel = document.getElementById(selectId);
+    if (!sel) return;
+    var KEY = 'gAndETicker_' + selectId + '_' + DASH;
+    function showView(target) {
+      document.querySelectorAll('.' + viewClass).forEach(function(div) {
+        var match = div.getAttribute(viewAttr) === target;
+        div.hidden = !match;
+        if (match) {
+          var plot = div.querySelector('.js-plotly-plot');
+          if (plot && window.Plotly) {
+            setTimeout(function() { Plotly.Plots.resize(plot); }, 0);
+          }
+        }
+      });
+    }
+    var saved = localStorage.getItem(KEY);
+    if (saved && [].some.call(sel.options, function(o) { return o.value === saved; })) {
+      sel.value = saved;
+      showView(saved);
+    }
+    sel.addEventListener('change', function() {
+      localStorage.setItem(KEY, sel.value);
+      showView(sel.value);
+    });
+  }
+  bind('chart-view-select', 'data-view', 'chart-view');
+  bind('trends-view-select', 'data-trend', 'trend-view');
+})();
+</script>
+    <script>
+(function() {
+  var LAT = 39.96, LON = -82.99;
+  var CACHE_KEY = 'gAndETicker_weather_v1';
+  var CACHE_TTL_MS = 12 * 60 * 60 * 1000;
+  function loadCache() {
+    try {
+      var raw = localStorage.getItem(CACHE_KEY);
+      if (!raw) return null;
+      var obj = JSON.parse(raw);
+      if (Date.now() - obj.ts > CACHE_TTL_MS) return null;
+      return obj.data;
+    } catch (e) { return null; }
+  }
+  function saveCache(data) {
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify({ts: Date.now(), data: data})); } catch (e) {}
+  }
+  function fetchWeather() {
+    var cached = loadCache();
+    if (cached) return Promise.resolve(cached);
+    var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + LAT + '&longitude=' + LON +
+      '&daily=temperature_2m_mean,temperature_2m_max,temperature_2m_min&past_days=92&forecast_days=14' +
+      '&temperature_unit=fahrenheit&timezone=America%2FNew_York';
+    return fetch(url).then(function(r) { if (!r.ok) throw new Error('open-meteo ' + r.status); return r.json(); })
+      .then(function(data) { saveCache(data); return data; });
+  }
+  function findWeatherChart() {
+    var views = document.querySelectorAll('.chart-view[data-view="weather"] .js-plotly-plot');
+    return views[0] || null;
+  }
+  function applyOverlay(chartDiv, wx) {
+    if (!chartDiv || !window.Plotly || !wx || !wx.daily) return;
+    var dates = wx.daily.time;
+    var tMean = wx.daily.temperature_2m_mean;
+    var tMax = wx.daily.temperature_2m_max;
+    var tMin = wx.daily.temperature_2m_min;
+    var today = new Date().toISOString().slice(0, 10);
+    var splitIdx = dates.findIndex(function(d) { return d > today; });
+    if (splitIdx < 0) splitIdx = dates.length;
+    var histX = dates.slice(0, splitIdx);
+    var histY = tMean.slice(0, splitIdx);
+    var fcX = dates.slice(Math.max(splitIdx - 1, 0));
+    var fcY = tMean.slice(Math.max(splitIdx - 1, 0));
+    var bandX = dates.concat([].slice.call(dates).reverse());
+    var bandY = tMax.concat([].slice.call(tMin).reverse());
+    var traces = [
+      { x: bandX, y: bandY, fill: 'toself', fillcolor: 'rgba(59, 130, 246, 0.08)',
+        line: {color: 'rgba(0,0,0,0)'}, name: 'Temp range (min/max)', yaxis: 'y2',
+        hoverinfo: 'skip', showlegend: true, type: 'scatter' },
+      { x: histX, y: histY, mode: 'lines', name: 'Temp mean (°F)', yaxis: 'y2',
+        line: {color: '#3b82f6', width: 2}, type: 'scatter' },
+      { x: fcX, y: fcY, mode: 'lines', name: 'Temp forecast', yaxis: 'y2',
+        line: {color: '#3b82f6', width: 2, dash: 'dot'}, type: 'scatter' }
+    ];
+    Plotly.addTraces(chartDiv, traces);
+    Plotly.relayout(chartDiv, {
+      shapes: [{ type: 'line', x0: today, x1: today, yref: 'paper', y0: 0, y1: 1,
+                 line: {color: '#9ca3af', width: 1, dash: 'dash'} }],
+      annotations: [{ x: today, y: 1, yref: 'paper', text: 'today', showarrow: false,
+                      yanchor: 'bottom', font: {size: 10, color: '#9ca3af'} }]
+    });
+  }
+  function init() {
+    var chartDiv = findWeatherChart();
+    if (!chartDiv) return;
+    if (chartDiv.dataset.weatherLoaded === '1') return;
+    chartDiv.dataset.weatherLoaded = '1';
+    fetchWeather().then(function(wx) { applyOverlay(chartDiv, wx); })
+      .catch(function(err) { console.warn('Weather overlay unavailable:', err); chartDiv.dataset.weatherLoaded = '0'; });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
+    
+<script>
+(function() {
+    const PULSE_DATA = {};
+    const TERM_ORDER = ['6', '12', '24'];
+    const grid = document.getElementById('market-pulse-grid');
+    const tlSelect = document.getElementById('pulse-timeline');
+
+    // Status tier rank (lower = better) — drives the "best pick" recommendation.
+    const TIER_RANK = {
+      'Near 6 months low': 0, 'Near year low': 0, 'Near 3 years low': 0, 'Near 5 years low': 0,
+      'Reasonable to switch': 1,
+      'Switching premium': 2,
+      'Bad time to switch': 3
+    };
+
+    function rankTier(status) {
+      if (status && status.indexOf('Near ') === 0) return 0;
+      return TIER_RANK[status] != null ? TIER_RANK[status] : 4;
+    }
+
+    function pickBestTerm(byTerm, tf) {
+      // Score each term by (tier, then premium %). Tie-break prefers longer term
+      // when within 3% premium — a longer lock at the same effective deal is better.
+      const candidates = [];
+      TERM_ORDER.forEach(function(t) {
+        const td = byTerm[t]; if (!td) return;
+        const w = td.windows && td.windows[tf]; if (!w) return;
+        candidates.push({ term: t, tier: rankTier(w.status), premium: w.premium_pct, w: w, td: td });
+      });
+      if (!candidates.length) return null;
+      candidates.sort(function(a, b) {
+        if (a.tier !== b.tier) return a.tier - b.tier;
+        if (Math.abs(a.premium - b.premium) < 3) return Number(b.term) - Number(a.term); // longer term wins on near-tie
+        return a.premium - b.premium;
+      });
+      const best = candidates[0];
+      const allBad = candidates.every(function(c) { return c.tier >= 3; });
+      const allPremiumOrWorse = candidates.every(function(c) { return c.tier >= 2; });
+      // Within-3% premiums means terms are effectively tied — the recommendation
+      // is a tie-breaker, not a "this term is clearly better" call.
+      const tied = candidates.length > 1 && (Math.max.apply(null, candidates.map(c => c.premium)) - Math.min.apply(null, candidates.map(c => c.premium)) < 3);
+      return { best: best, candidates: candidates, allBad: allBad, allPremiumOrWorse: allPremiumOrWorse, tied: tied };
+    }
+
+    function buildRecommendationRationale(pick) {
+      // Generate a rationale that REFLECTS the comparison across all terms,
+      // so we don't contradict ourselves by reusing one term's isolated CTA.
+      const b = pick.best;
+      const tier = b.tier;
+      const supplier = b.td.today_supplier;
+      const rate = b.td.today_rate;
+      const term = b.term;
+      const premium = b.premium;
+
+      if (tier === 0) {
+        if (term === '24') {
+          return `Lock today's near-low rate (${rate}) with ${supplier} for a full 2 years. This is exactly the moment a long-term contract pays off.`;
+        } else if (term === '12') {
+          return `Switch to ${supplier} at ${rate}. Today's rate is near the recent low — a strong 1-year lock.`;
+        } else {
+          return `Switch to ${supplier} at ${rate} for 6 months. Near recent lows, but you'd give up the long lock — consider 12 or 24 mo if those are also near low.`;
+        }
+      }
+
+      if (tier === 1) {
+        if (term === '24') {
+          return `${supplier} at ${rate} for 24 months. Slightly above the recent low (+${premium}%), but a long lock at a reasonable rate is fine for stability.`;
+        }
+        return `${supplier} at ${rate} for ${term} months. ${premium}% above the recent low — a reasonable switch.`;
+      }
+
+      if (tier === 2) {
+        if (pick.tied) {
+          return `All terms are at a similar premium (~${premium}%) above the recent low. If you must switch now, the ${term}-month with ${supplier} at ${rate} ties for the smallest premium AND locks in for the longest — best of a mediocre set. Waiting is also defensible.`;
+        }
+        return `${supplier} at ${rate} for ${term} months is the least-bad option (+${premium}% above the recent low). Switching now means paying a premium — waiting is reasonable if your current plan allows.`;
+      }
+
+      // tier 3 individual case (shouldn't usually hit here since allBad uses the other banner)
+      return `${supplier} at ${rate} for ${term} months is the smallest premium available, but still well above the recent low (+${premium}%). Strongly consider waiting.`;
+    }
+
+    function renderTermRow(t, td, w, isBest) {
+      const bg = isBest ? '#ecfdf5' : '#f8fafc';
+      const border = isBest ? '#10b981' : 'transparent';
+      const premiumLabel = w.premium_pct <= 0 ? 'At the low' : `+${w.premium_pct}% over low`;
+      const bestBadge = isBest ? '<span style="background:#10b981;color:white;font-size:0.6em;font-weight:800;padding:2px 6px;border-radius:4px;text-transform:uppercase;letter-spacing:0.05em;margin-left:6px;">Best pick</span>' : '';
+      return `
+        <div style="background:${bg}; border:1px solid ${border}; border-radius:8px; padding:10px 12px; margin-bottom:8px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:4px;">
+            <span style="font-weight:800; font-size:0.95em;">${t}-month ${bestBadge}</span>
+            <span style="font-size:0.75em; font-weight:800; color:${w.color}; white-space:nowrap;">${w.icon} ${w.status}</span>
+          </div>
+          <div style="font-size:0.82em; color:var(--text);">
+            <strong>${td.today_supplier}</strong> at <strong>${td.today_rate}</strong>
+            <span style="color:${w.color}; font-weight:700; margin-left:4px;">${premiumLabel}</span>
+          </div>
+          <div style="font-size:0.7em; color:var(--muted); margin-top:2px;">
+            Recent low: ${w.hist_low_supplier} at ${w.hist_low_rate} (${w.hist_low_date})
+          </div>
+        </div>
+      `;
+    }
+
+    function renderPulse() {
+        if (!grid) return;
+        const tf = tlSelect ? tlSelect.value : '1y';
+        let html = '';
+
+        for (const [util, data] of Object.entries(PULSE_DATA)) {
+            const byTerm = data.by_term;
+            if (!byTerm) continue;
+            const pick = pickBestTerm(byTerm, tf);
+            if (!pick) continue;
+
+            // Headline recommendation — generated to reflect the comparison
+            // across all terms, never reusing a single-term isolated CTA.
+            let headline;
+            if (pick.allBad) {
+              headline = `
+                <div style="background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:10px 12px; margin-bottom:12px;">
+                  <div style="font-size:0.75em; font-weight:800; color:#b91c1c; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:2px;">🚫 Don't switch right now</div>
+                  <div style="font-size:0.82em; color:var(--text);">All available contract lengths are well above their recent lows. If your current plan still has time, wait.</div>
+                </div>
+              `;
+            } else {
+              const b = pick.best;
+              const rationale = buildRecommendationRationale(pick);
+              // Use neutral styling when the recommendation is a "least-bad" tie-break
+              const isHighConfidence = b.tier <= 1;
+              const bg = isHighConfidence ? '#ecfdf5' : '#fffbeb';
+              const border = isHighConfidence ? '#10b981' : '#f59e0b';
+              const titleColor = isHighConfidence ? '#047857' : '#92400e';
+              const icon = isHighConfidence ? '✅' : '⚖️';
+              const verb = isHighConfidence ? 'Recommended' : 'Best of available';
+              headline = `
+                <div style="background:${bg}; border:1px solid ${border}; border-radius:8px; padding:10px 12px; margin-bottom:12px;">
+                  <div style="font-size:0.75em; font-weight:800; color:${titleColor}; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:2px;">${icon} ${verb}: ${b.term}-month with ${b.td.today_supplier}</div>
+                  <div style="font-size:0.82em; color:var(--text);">${rationale}</div>
+                </div>
+              `;
+            }
+
+            // All three term rows
+            let rows = '';
+            TERM_ORDER.forEach(function(t) {
+              const td = byTerm[t]; if (!td) return;
+              const w = td.windows && td.windows[tf]; if (!w) return;
+              const isBest = !pick.allBad && pick.best.term === t;
+              rows += renderTermRow(t, td, w, isBest);
+            });
+
+            html += `
+                <div class="stat-card" data-utility="${util}" style="text-align:left; padding:16px;">
+                    <div style="font-size:0.75em; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:10px;">If you're on ${util}</div>
+                    ${headline}
+                    <div style="font-size:0.68em; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; margin:8px 0 6px;">All contract lengths</div>
+                    ${rows}
+                </div>
+            `;
+        }
+        grid.innerHTML = html || '<p style="grid-column: 1/-1; text-align: center; color: var(--muted); font-size: 0.9em; padding: 20px;">Insufficient historical data for this comparison window.</p>';
+    }
+
+    if (tlSelect) tlSelect.addEventListener('change', renderPulse);
+    renderPulse();
+})();
+</script>
+
+    <script>
+    (function() {
+      var STORAGE_KEY = 'oet_selection_v1';
+      var FUEL = document.body.getAttribute('data-dashboard') || 'electric';
+
+      var UTILITIES = {"electric": [{"value": "1182", "label": "PECO Energy"}, {"value": "1186", "label": "PPL Electric Utilities"}, {"value": "1180", "label": "Duquesne Light"}, {"value": "1181", "label": "Met-Ed"}, {"value": "1183", "label": "Penelec"}, {"value": "1184", "label": "Penn Power"}, {"value": "1189", "label": "West Penn Power"}, {"value": "1187", "label": "UGI"}], "gas": [{"value": "4425", "label": "UGI Utilities"}, {"value": "4420", "label": "Columbia Gas of PA"}, {"value": "4422", "label": "PECO Gas"}, {"value": "4423", "label": "Peoples Natural Gas"}, {"value": "4421", "label": "National Fuel Gas"}, {"value": "4424", "label": "Philadelphia Gas Works (PGW)"}]};
+
+      function loadSelection() {
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); }
+        catch (e) { return {}; }
+      }
+      function saveSelection(sel) {
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(sel)); } catch (e) {}
+      }
+
+      // Populate utility buttons + hidden select for this fuel
+      var utilSel = document.getElementById('utility-select');
+      var utilButtons = document.getElementById('utility-buttons');
+      var stateSel = document.getElementById('state-select');
+      var hint = document.getElementById('selection-hint');
+
+      var opts = '<option value="">— Pick yours —</option>';
+      var btnHtml = '';
+      UTILITIES[FUEL].forEach(function(u) {
+        opts += '<option value="' + u.value + '">' + u.label + '</option>';
+        btnHtml += '<button type="button" class="util-btn" data-value="' + u.value + '">' +
+                     '<span>' + u.label + '</span>' +
+                     '<span class="util-btn-check">✓</span>' +
+                   '</button>';
+      });
+      opts += '<option value="all">Compare all ' + FUEL + ' options in your state</option>';
+      btnHtml += '<button type="button" class="util-btn util-btn-all" data-value="all">' +
+                   '<span>Compare all ' + FUEL + ' options in your state</span>' +
+                   '<span class="util-btn-check">✓</span>' +
+                 '</button>';
+      utilSel.innerHTML = opts;
+      utilButtons.innerHTML = btnHtml;
+
+      // Load saved selection
+      var saved = loadSelection();
+      if (saved.state) stateSel.value = saved.state;
+      var savedUtil = (saved.utilities && saved.utilities[FUEL]) || '';
+      if (savedUtil) utilSel.value = savedUtil;
+
+      function updateActiveButton(value) {
+        utilButtons.querySelectorAll('.util-btn').forEach(function(b) {
+          b.classList.toggle('util-btn-active', b.dataset.value === value);
+        });
+      }
+      updateActiveButton(utilSel.value);
+
+      function applyFilter(utility) {
+        // Reset: show everything
+        document.querySelectorAll('[data-utility]').forEach(function(el) {
+          el.style.display = '';
+        });
+
+        if (!utility) {
+          hint.textContent = '';
+          return;
+        }
+        if (utility === 'all') {
+          hint.textContent = 'Showing all utilities';
+          return;
+        }
+
+        // Hide non-matching elements
+        document.querySelectorAll('[data-utility]').forEach(function(el) {
+          if (el.dataset.utility !== utility) {
+            el.style.display = 'none';
+          }
+        });
+        hint.textContent = 'Filtered to your utility';
+
+        // Pre-select calculator utility dropdown
+        var calcSel = document.getElementById('calc-utility');
+        if (calcSel) {
+          for (var i = 0; i < calcSel.options.length; i++) {
+            if (calcSel.options[i].value === utility) {
+              calcSel.value = utility;
+              calcSel.dispatchEvent(new Event('change'));
+              break;
+            }
+          }
+        }
+      }
+
+      applyFilter(utilSel.value);
+
+      // Async-rendered sections (pulse cards, top-rates rows) need re-filter after they mount
+      function filterDynamic() {
+        var u = utilSel.value;
+        if (!u || u === 'all') return;
+        document.querySelectorAll('[data-utility]').forEach(function(el) {
+          if (el.dataset.utility !== u) el.style.display = 'none';
+        });
+      }
+      ['market-pulse-grid'].forEach(function(id) {
+        var node = document.getElementById(id);
+        if (node) new MutationObserver(filterDynamic).observe(node, { childList: true });
+      });
+
+      // Save + apply on change
+      utilSel.addEventListener('change', function() {
+        var sel = loadSelection();
+        sel.state = stateSel.value || 'OH';
+        sel.utilities = sel.utilities || {};
+        sel.utilities[FUEL] = utilSel.value;
+        saveSelection(sel);
+        applyFilter(utilSel.value);
+        updateActiveButton(utilSel.value);
+        // Top Rates table re-renders from the per-utility bucket
+        if (typeof window.__renderTopRates === 'function') window.__renderTopRates();
+      });
+
+      utilButtons.addEventListener('click', function(e) {
+        var btn = e.target.closest('.util-btn');
+        if (!btn) return;
+        utilSel.value = btn.dataset.value;
+        utilSel.dispatchEvent(new Event('change'));
+      });
+      stateSel.addEventListener('change', function() {
+        var sel = loadSelection();
+        sel.state = stateSel.value;
+        saveSelection(sel);
+        // If this state has a different dashboard file for the current fuel,
+        // navigate to it. (Once we have more than one state in STATE_CONFIG,
+        // each option carries data-elec / data-gas attributes pointing at
+        // that state's electric/gas dashboards.)
+        var opt = stateSel.options[stateSel.selectedIndex];
+        var target = FUEL === 'gas' ? opt.getAttribute('data-gas') : opt.getAttribute('data-elec');
+        if (target && target !== window.location.pathname.split('/').pop()) {
+          window.location.href = target;
+        }
+      });
+    })();
+    </script>
+    </body>
+    </html>
+    

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ohio Energy Tracker | Consumer Guide</title>
+    <title>RateSavvy | Find the best energy supplier in your state</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0f172a">
     <link rel="apple-touch-icon" href="icon-192.png">
@@ -90,14 +90,20 @@
 <body>
     <nav class="topnav">
         <div class="topnav-inner">
-            <span class="brand">Ohio Energy Tracker</span>
+            <span class="brand">RateSavvy</span>
         </div>
     </nav>
 
+    <div id="welcome-back" style="display:none; background:#1e40af; color:white; padding:12px 16px; text-align:center; font-size:0.9em;">
+        <span id="welcome-back-text"></span>
+        <a id="welcome-back-link" href="#" style="color:white; font-weight:700; text-decoration:underline; margin-left:8px;">Go to dashboard →</a>
+        <button id="welcome-back-clear" style="margin-left:12px; background:transparent; border:1px solid rgba(255,255,255,0.4); color:white; padding:3px 10px; border-radius:4px; font-size:0.8em; cursor:pointer;">Start fresh</button>
+    </div>
+
     <header class="hero">
         <div class="hero-content">
-            <h1>Explore your options.</h1>
-            <p>Most Ohioans don't realize they can choose their energy supplier. This free, open-source project tracks the daily market to help you find competitive rates—filtering out common "fine print" to make comparison easier.</p>
+            <h1>Don't overpay for energy.</h1>
+            <p>If you live in a deregulated state, you can choose who supplies your electricity and natural gas — and most Americans never do. RateSavvy tracks the daily market so you can lock in a competitive supplier, filtering out the fine print that makes comparison shopping a chore. <span style="display:block; margin-top:8px; font-size:0.85em; color:#cbd5e1;">Live coverage: Ohio. More states coming.</span></p>
             <div class="cta-group">
                 <a href="electric_dashboard.html" class="btn btn-primary">⚡ View Electric Rates</a>
                 <a href="gas_dashboard.html" class="btn btn-primary">🔥 View Gas Rates</a>
@@ -107,10 +113,11 @@
 
     <main class="container">
         <section class="guide-section">
-            <h2>Why does Ohio let me choose?</h2>
+            <h2>How energy choice works</h2>
             <div class="card">
-                <p>Since 2001, Ohio has had a <strong>deregulated energy market</strong>. This means your local utility company (like AEP or Columbia Gas) is responsible for <em>delivering</em> the energy, but you can choose who <em>supplies</em> it.</p>
-                <p>Think of it like your phone: The utility company owns the "wires," but you get to choose the "service provider." By switching suppliers, you can often lock in a lower fixed rate and save hundreds of dollars per year.</p>
+                <p>Roughly a third of the US lives in a <strong>deregulated energy market</strong>. Your local utility company is responsible for <em>delivering</em> the energy — the wires, pipes, and the meter — but you can choose who <em>supplies</em> it.</p>
+                <p>Think of it like your phone: the utility owns the wires, but you pick the service provider. Switching to a competitive supplier often locks in a lower fixed rate and can save hundreds of dollars a year.</p>
+                <p style="margin-top:12px; font-size:0.9em; color:var(--muted);"><strong>Deregulated states with consumer choice include:</strong> Connecticut, Delaware, Illinois, Maine, Maryland, Massachusetts, Michigan, New Hampshire, New Jersey, New York, Ohio, Oregon, Pennsylvania, Rhode Island, Texas, Virginia, Washington D.C., and others.</p>
             </div>
         </section>
 
@@ -146,7 +153,7 @@
         <section class="guide-section">
             <h2>Why use this tool?</h2>
             <div class="card">
-                <p>The official state website ("Apples to Apples") is comprehensive, but can be overwhelming with teaser rates and complex fee structures. This tool is an automated assistant that tries to surface the most straightforward offers by filtering for:</p>
+                <p>Official state comparison sites are comprehensive, but they're easy to get lost in — teaser rates, monthly fees, and term commitments are buried in fine print. RateSavvy automates the comparison and surfaces only the straightforward offers, filtering for:</p>
                 <ul>
                     <li>Fixed-rate plans (avoiding monthly price spikes)</li>
                     <li>Plans with no monthly service fees</li>
@@ -159,18 +166,64 @@
     </main>
 
     <footer>
-        <p>&copy; 2026 Ohio Energy Tracker | Data sourced daily from Energy Choice Ohio</p>
+        <p>&copy; 2026 RateSavvy · <a href="https://ratesavvy.us">ratesavvy.us</a> · Current data source: Energy Choice Ohio</p>
     </footer>
 
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                const swPath = window.location.pathname.includes('gasAndElectricTicker') 
-                    ? '/gasAndElectricTicker/sw.js' 
+                const swPath = window.location.pathname.includes('gasAndElectricTicker')
+                    ? '/gasAndElectricTicker/sw.js'
                     : './sw.js';
                 navigator.serviceWorker.register(swPath);
             });
         }
+
+        // Welcome-back banner: if the user previously picked a state + utility,
+        // surface a one-click jump to their dashboard. Per-state dashboard file
+        // naming convention matches build_dashboard.py's STATE_CONFIG: Ohio uses
+        // the legacy electric_dashboard.html / gas_dashboard.html for backward
+        // compatibility, other states use <code>-electric_dashboard.html etc.
+        (function() {
+            // State display names — keep in sync with build_dashboard.py STATE_CONFIG.
+            var STATE_NAMES = { 'OH': 'Ohio', 'PA': 'Pennsylvania' };
+
+            function dashboardFile(state, fuel) {
+                if (state === 'OH') {
+                    return fuel === 'gas' ? 'gas_dashboard.html' : 'electric_dashboard.html';
+                }
+                var slug = state.toLowerCase();
+                return slug + '-' + (fuel === 'gas' ? 'gas' : 'electric') + '_dashboard.html';
+            }
+
+            var saved;
+            try { saved = JSON.parse(localStorage.getItem('oet_selection_v1') || 'null'); }
+            catch (e) { saved = null; }
+            if (!saved || !saved.state) return;
+
+            // Prefer electric if both are saved, otherwise whichever fuel is set.
+            var utilities = saved.utilities || {};
+            var fuel = utilities.electric ? 'electric' : (utilities.gas ? 'gas' : null);
+            if (!fuel) return;
+
+            var banner = document.getElementById('welcome-back');
+            var text   = document.getElementById('welcome-back-text');
+            var link   = document.getElementById('welcome-back-link');
+            var clearBtn = document.getElementById('welcome-back-clear');
+
+            var stateName = STATE_NAMES[saved.state] || saved.state;
+            var utilLabel = utilities[fuel] === 'all' ? 'all utilities' : utilities[fuel];
+            text.textContent = 'Welcome back — pick up where you left off (' +
+                stateName + ' · ' + fuel + ' · ' + utilLabel + ')';
+            link.textContent = 'Open my dashboard →';
+            link.href = dashboardFile(saved.state, fuel);
+            banner.style.display = 'block';
+
+            clearBtn.addEventListener('click', function() {
+                try { localStorage.removeItem('oet_selection_v1'); } catch (e) {}
+                banner.style.display = 'none';
+            });
+        })();
     </script>
 </body>
 </html>

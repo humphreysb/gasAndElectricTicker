@@ -67,22 +67,25 @@ def _bbb_pill_html(cleaned_supplier):
     )
 
 # 1. Import utility names from your providers.py file
-try:
-    from providers import elec, gas
-except ImportError:
-    elec = {9:'AES Power', 2:'AEP', 4:'Duke', 7:'Ohio Edison', 6:'Ilumminating Co', 3:'Toledo Edison'}
-    gas = {1:'Enbridge-Dominion', 11:'Centerpoint', 10:'Duke', 8:'Columbia'}
+import providers
 
-def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url, top_link_text, threshold_rate):
+def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url, top_link_text, threshold_rate, state='OH'):
     # --- 2. LOAD & INITIAL FILTERING ---
     df = pd.read_parquet(file_path)
 
+    # Backfill state for any rows scraped before the multi-state column existed.
+    if 'state' not in df.columns:
+        df['state'] = 'OH'
+    else:
+        df['state'] = df['state'].fillna('OH')
+
     base_mask = (
+        (df['state'] == state) &
         (df['electric'] == elecHtml) &
         (df['Fixed Rate'] == True) &
         (df['intro. price'] == False) &
         (
-            (df['Supplier'] == 'Utility') | 
+            (df['Supplier'] == 'Utility') |
             (
                 (df['Term. Length'] >= 6) &
                 (df['Early Term. Fee'] == 0) &
@@ -103,10 +106,9 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
     filtered_df['Date'] = filtered_df['Date'].dt.tz_convert('US/Eastern')
 
     # --- 4. APPLY UTILITY NAMES ---
-    if elecHtml:
-        filtered_df['Utility'] = filtered_df['Provider'].map(elec)
-    else:
-        filtered_df['Utility'] = filtered_df['Provider'].map(gas)
+    state_util_map = providers.for_state(state)
+    util_map = state_util_map['elec'] if elecHtml else state_util_map['gas']
+    filtered_df['Utility'] = filtered_df['Provider'].map(util_map)
     
     filtered_df['Utility'] = filtered_df['Utility'].fillna(filtered_df['Supplier'].str.split().str[0])
 
@@ -1012,7 +1014,6 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
     hero_section = f"""
         <header class="hero">
             <div class="hero-content">
-                <div class="hero-badge">{icon} Ohio {dashboard_title.split()[0]} Market (Experimental)</div>
                 <h1>Explore Energy Options</h1>
                 <p class="hero-lead">
                     This free community tool tracks the <strong>Apples to Apples</strong> marketplace daily, attempting to filter out complex "fine print" 
@@ -1184,11 +1185,6 @@ body {
   margin-bottom: 40px;
 }
 .hero-content { max-width: 800px; margin: 0 auto; }
-.hero-badge {
-  display: inline-block; background: rgba(255,255,255,0.1);
-  padding: 4px 12px; border-radius: 20px; font-size: 0.85em;
-  font-weight: 600; margin-bottom: 16px; border: 1px solid rgba(255,255,255,0.2);
-}
 .hero h1 {
   font-size: 2.75em; font-weight: 800; margin: 0 0 16px;
   letter-spacing: -0.03em; line-height: 1.1;
@@ -1408,9 +1404,9 @@ body {
         "      var usage = parseFloat($('calc-usage').value);\n"
         "      var minRate = DATA.min_by_util[util];\n"
         "      var yearlyDiff = (myRate - minRate) * usage * 12;\n"
-        "      var msg = 'I could save ' + fmtMoney(yearlyDiff) + ' / year on my ' + DATA.dashboard_type + ' bill! Check your savings at the Ohio Energy Tracker: ' + window.location.href;\n"
+        "      var msg = 'I could save ' + fmtMoney(yearlyDiff) + ' / year on my ' + DATA.dashboard_type + ' bill! Check your savings at RateSavvy: ' + window.location.href;\n"
         "      if (navigator.share) {\n"
-        "        navigator.share({ title: 'Ohio Energy Tracker', text: msg, url: window.location.href }).catch(function(e) { console.error('Error sharing:', e); });\n"
+        "        navigator.share({ title: 'RateSavvy', text: msg, url: window.location.href }).catch(function(e) { console.error('Error sharing:', e); });\n"
         "      } else {\n"
         "        navigator.clipboard.writeText(msg).then(function() {\n"
         "          alert('Sharing message copied to clipboard!');\n"
@@ -1426,6 +1422,15 @@ body {
     elec_active = 'tab-active' if elecHtml else ''
     gas_active = 'tab-active' if not elecHtml else ''
     dash_type = 'electric' if elecHtml else 'gas'
+
+    # Build the state dropdown from STATE_CONFIG, marking the current state
+    # selected and embedding each state's electric/gas filename as data
+    # attributes so the client-side JS can navigate on change.
+    state_options = "\n".join(
+        f'<option value="{code}" data-elec="{cfg["elec_file"]}" data-gas="{cfg["gas_file"]}"'
+        f'{" selected" if code == state else ""}>{cfg["name"]}</option>'
+        for code, cfg in STATE_CONFIG.items()
+    )
 
     weather_js = (
         "<script>\n(function() {\n"
@@ -1539,16 +1544,24 @@ body {
         "})();\n</script>"
     )
     
+    # Prepare JS utility objects for the state selector
+    state_util_map = providers.for_state(state)
+    js_utilities = {
+        'electric': [{'value': str(k), 'label': v} for k, v in state_util_map['elec'].items()],
+        'gas': [{'value': str(k), 'label': v} for k, v in state_util_map['gas'].items()]
+    }
+    js_utilities_json = json.dumps(js_utilities)
+
     full_html = f"""<!DOCTYPE html>
     <html lang="en">
     <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Ohio {dashboard_title}</title>
-    <meta property="og:title" content="Ohio {dashboard_title}">
-    <meta property="og:description" content="Track daily energy rates in Ohio and find the best fixed-rate plans.">
+    <title>{dashboard_title} · RateSavvy</title>
+    <meta property="og:title" content="{dashboard_title} · RateSavvy">
+    <meta property="og:description" content="Daily energy rate tracking for deregulated US markets. Find the best supplier in your state.">
     <meta property="og:type" content="website">
-    <meta name="description" content="Free, open-source tracker for Ohio energy rates. Compare utility supply charges daily.">
+    <meta name="description" content="RateSavvy — find the best energy supplier in your state. Daily rate tracking for deregulated US markets, starting with Ohio.">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0f172a">
     <link rel="apple-touch-icon" href="icon-192.png">
@@ -1572,7 +1585,7 @@ body {
     </script>
     <nav class="topnav">
     <div class="topnav-inner">
-    <span class="brand"><a href="index.html" style="color:inherit;text-decoration:none;">Ohio Energy Tracker</a></span>
+    <span class="brand"><a href="index.html" style="color:inherit;text-decoration:none;">RateSavvy</a></span>
     <div class="tabs">
     <a href="electric_dashboard.html" class="tab {elec_active}" data-tab="electric">Electric</a>
     <a href="gas_dashboard.html" class="tab {gas_active}" data-tab="gas">Gas</a>
@@ -1587,7 +1600,7 @@ body {
           <p class="selection-explainer">
             Your <strong>utility company</strong> (also called the <strong>delivery company</strong>) is who runs the
             wires or pipes down your street and reads your meter — they're responsible for the lines, outages, and getting
-            power to your home. <strong>They don't have to generate the power</strong>: Ohio lets you pick a different
+            power to your home. <strong>They don't have to generate the power</strong>: deregulated states like yours let you pick a different
             supplier for the actual energy, which is where you can save money. Pick yours below to see rates tailored to your area.
           </p>
         </div>
@@ -1597,7 +1610,7 @@ body {
             <label class="selection-field selection-field-state">
               <span class="selection-label">State</span>
               <select id="state-select">
-                <option value="OH">Ohio</option>
+                {state_options}
               </select>
             </label>
           </div>
@@ -1618,7 +1631,7 @@ body {
     {market_pulse_html}
     {calculator_html}
     <h2 class="section-title">Available Plans by Delivery Utility</h2>
-    <p class="section-subtitle">Every supplier currently offering plans through each Ohio delivery utility, sorted by contract length. The lowest rate per term is highlighted.</p>
+    <p class="section-subtitle">Every supplier currently offering plans through each delivery utility in your area, sorted by contract length. The lowest rate per term is highlighted.</p>
     <div class="leaderboard-cards">
     {"".join(table_sections)}
     </div>
@@ -1659,22 +1672,7 @@ body {
       var STORAGE_KEY = 'oet_selection_v1';
       var FUEL = document.body.getAttribute('data-dashboard') || 'electric';
 
-      var UTILITIES = {{
-        electric: [
-          {{ value: 'AEP', label: 'AEP Ohio' }},
-          {{ value: 'AES Power', label: 'AES Ohio (formerly DP&L)' }},
-          {{ value: 'Duke', label: 'Duke Energy' }},
-          {{ value: 'Ohio Edison', label: 'Ohio Edison' }},
-          {{ value: 'Ilumminating Co', label: 'The Illuminating Co' }},
-          {{ value: 'Toledo Edison', label: 'Toledo Edison' }}
-        ],
-        gas: [
-          {{ value: 'Enbridge-Dominion', label: 'Enbridge (Dominion East Ohio)' }},
-          {{ value: 'Columbia', label: 'Columbia Gas of Ohio' }},
-          {{ value: 'Duke', label: 'Duke Energy' }},
-          {{ value: 'Centerpoint', label: 'CenterPoint Energy' }}
-        ]
-      }};
+      var UTILITIES = {js_utilities_json};
 
       function loadSelection() {{
         try {{ return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{{}}'); }}
@@ -1699,9 +1697,9 @@ body {
                      '<span class="util-btn-check">✓</span>' +
                    '</button>';
       }});
-      opts += '<option value="all">Compare all ' + FUEL + ' options in Ohio</option>';
+      opts += '<option value="all">Compare all ' + FUEL + ' options in your state</option>';
       btnHtml += '<button type="button" class="util-btn util-btn-all" data-value="all">' +
-                   '<span>Compare all ' + FUEL + ' options in Ohio</span>' +
+                   '<span>Compare all ' + FUEL + ' options in your state</span>' +
                    '<span class="util-btn-check">✓</span>' +
                  '</button>';
       utilSel.innerHTML = opts;
@@ -1794,6 +1792,15 @@ body {
         var sel = loadSelection();
         sel.state = stateSel.value;
         saveSelection(sel);
+        // If this state has a different dashboard file for the current fuel,
+        // navigate to it. (Once we have more than one state in STATE_CONFIG,
+        // each option carries data-elec / data-gas attributes pointing at
+        // that state's electric/gas dashboards.)
+        var opt = stateSel.options[stateSel.selectedIndex];
+        var target = FUEL === 'gas' ? opt.getAttribute('data-gas') : opt.getAttribute('data-elec');
+        if (target && target !== window.location.pathname.split('/').pop()) {{
+          window.location.href = target;
+        }}
       }});
     }})();
     </script>
@@ -1803,20 +1810,57 @@ body {
     with open(html_file_name, 'w', encoding='utf-8') as f:
         f.write(full_html)
 # --- EXECUTION ---
+# Iterates over every state present in the parquet and emits its electric
+# + gas dashboards. Ohio keeps the legacy filenames (electric_dashboard.html /
+# gas_dashboard.html) so existing URLs and the GitHub Pages config don't
+# break; additional states get prefixed filenames (e.g. pa-electric_dashboard.html).
 data_file = 'allData.parquet'
-generate_energy_dashboard(
-    file_path=data_file,
-    html_file_name='electric_dashboard.html',
-    elecHtml=True,
-    top_link_url="gas_dashboard.html",
-    top_link_text="Switch to Gas Dashboard",
-    threshold_rate=0.0869
-)
-generate_energy_dashboard(
-    file_path=data_file,
-    html_file_name='gas_dashboard.html',
-    elecHtml=False,
-    top_link_url="electric_dashboard.html",
-    top_link_text="Switch to Electric Dashboard",
-    threshold_rate=2.99
-)
+
+# Per-state filename + threshold config. As we onboard more states, add an
+# entry here. Filenames intentionally collide with the legacy URLs for OH.
+STATE_CONFIG = {
+    'OH': {
+        'name': 'Ohio',
+        'elec_file': 'electric_dashboard.html',
+        'gas_file': 'gas_dashboard.html',
+        'elec_threshold': 0.0869,
+        'gas_threshold': 2.99,
+    },
+    'PA': {
+        'name': 'Pennsylvania',
+        'elec_file': 'pa-electric_dashboard.html',
+        'gas_file':  'pa-gas_dashboard.html',
+        'elec_threshold': 0.09,
+        'gas_threshold':  3.00,
+    },
+}
+
+
+def _states_in_data(path):
+    """Return the list of state codes that actually have rows in the parquet."""
+    df = pd.read_parquet(path)
+    if 'state' not in df.columns:
+        return ['OH']
+    return sorted(s for s in df['state'].dropna().unique() if s in STATE_CONFIG)
+
+
+for _state in _states_in_data(data_file):
+    cfg = STATE_CONFIG[_state]
+    generate_energy_dashboard(
+        file_path=data_file,
+        html_file_name=cfg['elec_file'],
+        elecHtml=True,
+        top_link_url=cfg['gas_file'],
+        top_link_text='Switch to Gas Dashboard',
+        threshold_rate=cfg['elec_threshold'],
+        state=_state,
+    )
+    generate_energy_dashboard(
+        file_path=data_file,
+        html_file_name=cfg['gas_file'],
+        elecHtml=False,
+        top_link_url=cfg['elec_file'],
+        top_link_text='Switch to Electric Dashboard',
+        threshold_rate=cfg['gas_threshold'],
+        state=_state,
+    )
