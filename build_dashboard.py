@@ -461,20 +461,21 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
 
     table_sections = []
     if not today_df.empty:
-        # Get the best supplier per Utility and Term Length
-        today_min = today_df.loc[today_df.groupby(['Utility', 'Term. Length'])['rate'].idxmin()]
-        utilities = sorted(today_min['Utility'].unique())
+        # Get the best supplier per Provider and Term Length
+        today_min = today_df.loc[today_df.groupby(['Provider', 'Term. Length'])['rate'].idxmin()]
+        providers_ids = sorted(today_min['Provider'].unique())
 
-        for util in utilities:
-            u_data = today_min[today_min['Utility'] == util].sort_values(['Term. Length', 'rate'])
+        for pid in providers_ids:
+            u_data = today_min[today_min['Provider'] == pid].sort_values(['Term. Length', 'rate'])
+            util_name = u_data['Utility'].iloc[0]
             best_overall_rate = u_data['rate'].min()
-            current_min = current_min_by_util.get(util, best_overall_rate)
+            current_min = current_min_by_util.get(util_name, best_overall_rate)
 
-            badge_html = '<span class="badge-90d-low" title="Today\'s minimum matches the lowest rate in the last 90 days">90-DAY LOW</span>' if is_90d_low_by_util.get(util, False) else ''
+            badge_html = '<span class="badge-90d-low" title="Today\'s minimum matches the lowest rate in the last 90 days">90-DAY LOW</span>' if is_90d_low_by_util.get(util_name, False) else ''
             rate_pill = f'<span class="pill pill-rate">Min today: {current_min:.5f} {unit}</span>'
 
-            section = f'<article class="util-card" data-utility="{util}">'
-            section += f'<header class="util-card-head"><h3>{util}</h3>{rate_pill}{badge_html}</header>'
+            section = f'<article class="util-card" data-utility="{pid}">'
+            section += f'<header class="util-card-head"><h3>{util_name}</h3>{rate_pill}{badge_html}</header>'
             section += f"<table><thead><tr><th>Supplier</th><th>BBB</th><th>Term</th><th>Rate ({unit})</th></tr></thead><tbody>"
 
             for _, row in u_data.iterrows():
@@ -507,18 +508,18 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
         today_clean = today_df.copy()
         today_clean['SupplierClean'] = today_clean['Supplier'].apply(_clean_supplier_name)
         today_dedup = (
-            today_clean.groupby(['Utility', 'SupplierClean', 'Term. Length'], as_index=False)['rate']
+            today_clean.groupby(['Provider', 'Utility', 'SupplierClean', 'Term. Length'], as_index=False)['rate']
                        .min()
                        .sort_values('rate')
         )
-        unique_terms = sorted({int(t) for t in today_dedup['Term. Length'].unique()})
+        unique_terms = [t for t in [1, 6, 12, 24, 36] if t in today_dedup['Term. Length'].unique()]
 
         # Build aggregate buckets (top N across all utilities) + per-utility buckets
         top_rates_buckets = {'all': []}
         for t in unique_terms:
             top_rates_buckets[str(t)] = []
 
-        by_util = {}  # { util: { 'all': [...], '12': [...] } }
+        by_util = {}  # { provider_id_str: { 'all': [...], '12': [...] } }
 
         for _, row in today_dedup.iterrows():
             rating, url = _bbb_entry(row['SupplierClean'])
@@ -537,15 +538,16 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
             if tkey in top_rates_buckets and len(top_rates_buckets[tkey]) < TOP_N:
                 top_rates_buckets[tkey].append(entry)
 
-            u = entry['utility']
-            if u not in by_util:
-                by_util[u] = {'all': []}
+            pid = str(row['Provider'])
+            if pid not in by_util:
+                by_util[pid] = {'all': []}
                 for t in unique_terms:
-                    by_util[u][str(t)] = []
-            if len(by_util[u]['all']) < TOP_N:
-                by_util[u]['all'].append(entry)
-            if tkey in by_util[u] and len(by_util[u][tkey]) < TOP_N:
-                by_util[u][tkey].append(entry)
+                    by_util[pid][str(t)] = []
+            
+            if len(by_util[pid]['all']) < TOP_N:
+                by_util[pid]['all'].append(entry)
+            if tkey in by_util[pid] and len(by_util[pid][tkey]) < TOP_N:
+                by_util[pid][tkey].append(entry)
 
         top_rates_payload = {'unit': unit, 'data': top_rates_buckets, 'by_util': by_util, 'top_n': TOP_N}
         top_rates_term_options = '<option value="all">All terms</option>' + "".join(
@@ -579,48 +581,49 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
         top_rates_section_html = ''
 
     top_rates_js = (
-        "<script>\n(function() {\n"
-        "  var PAYLOAD = " + top_rates_payload_json + ";\n"
-        "  var sel = document.getElementById('top-rates-term-select');\n"
-        "  var tbody = document.getElementById('top-rates-tbody');\n"
-        "  if (!sel || !tbody) return;\n"
-        "  function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }\n"
-        "  function bbbPill(supplier, rating, url) {\n"
-        "    var href = url || ('https://www.google.com/search?q=' + encodeURIComponent(supplier + ' BBB rating'));\n"
-        "    if (rating) {\n"
-        "      var head = rating.trim().toUpperCase().replace('+', '').substring(0, 1);\n"
-        "      var cls = (head === 'A' || head === 'B') ? 'bbb-good' : (head === 'D' || head === 'F') ? 'bbb-poor' : 'bbb-mid';\n"
-        "      return '<a class=\"bbb-pill ' + cls + '\" href=\"' + href + '\" target=\"_blank\" rel=\"noopener\" title=\"BBB rating: ' + esc(rating) + '\">' + esc(rating) + '</a>';\n"
-        "    }\n"
-        "    return '<a class=\"bbb-pill bbb-unknown\" href=\"' + href + '\" target=\"_blank\" rel=\"noopener\" title=\"No rating cached — click to look up\">—</a>';\n"
-        "  }\n"
-        "  function getSelectedUtility() {\n"
-        "    try {\n"
-        "      var saved = JSON.parse(localStorage.getItem('oet_selection_v1') || '{}');\n"
-        "      var fuel = document.body.getAttribute('data-dashboard') || 'electric';\n"
-        "      var u = saved.utilities && saved.utilities[fuel];\n"
-        "      return (u && u !== 'all') ? u : null;\n"
-        "    } catch (e) { return null; }\n"
-        "  }\n"
-        "  function render() {\n"
-        "    var term = sel.value;\n"
-        "    var util = getSelectedUtility();\n"
-        "    var rows;\n"
-        "    if (util && PAYLOAD.by_util && PAYLOAD.by_util[util]) {\n"
-        "      rows = PAYLOAD.by_util[util][term] || [];\n"
-        "    } else {\n"
-        "      rows = PAYLOAD.data[term] || [];\n"
-        "    }\n"
-        "    var heading = document.getElementById('top-rates-heading');\n"
-        "    if (heading) {\n"
-        "      var n = PAYLOAD.top_n || 3;\n"
-        "      var label = util;\n"
-        "      if (util && UTILITIES[FUEL]) {\n"
-        "        var uObj = UTILITIES[FUEL].find(function(u) { return u.value === util; });\n"
-        "        if (uObj) label = uObj.label;\n"
-        "      }\n"
-        "      heading.textContent = util ? ('Top ' + n + ' Rates for ' + label) : ('Top ' + n + ' Rates Right Now');\n"
-        "    }\n"
+      "<script>\n(function() {\n"
+      "  var PAYLOAD = " + top_rates_payload_json + ";\n"
+      "  var FUEL = document.body.getAttribute('data-dashboard') || 'electric';\n"
+      "  var sel = document.getElementById('top-rates-term-select');\n"
+      "  var tbody = document.getElementById('top-rates-tbody');\n"
+      "  if (!sel || !tbody) return;\n"
+      "  function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }\n"
+      "  function bbbPill(supplier, rating, url) {\n"
+      "    var href = url || ('https://www.google.com/search?q=' + encodeURIComponent(supplier + ' BBB rating'));\n"
+      "    if (rating) {\n"
+      "      var head = rating.trim().toUpperCase().replace('+', '').substring(0, 1);\n"
+      "      var cls = (head === 'A' || head === 'B') ? 'bbb-good' : (head === 'D' || head === 'F') ? 'bbb-poor' : 'bbb-mid';\n"
+      "      return '<a class=\"bbb-pill ' + cls + '\" href=\"' + href + '\" target=\"_blank\" rel=\"noopener\" title=\"BBB rating: ' + esc(rating) + '\">' + esc(rating) + '</a>';\n"
+      "    }\n"
+      "    return '<a class=\"bbb-pill bbb-unknown\" href=\"' + href + '\" target=\"_blank\" rel=\"noopener\" title=\"No rating cached — click to look up\">—</a>';\n"
+      "  }\n"
+      "  function getSelectedUtility() {\n"
+      "    try {\n"
+      "      var saved = JSON.parse(localStorage.getItem('oet_selection_v1') || '{}');\n"
+      "      var u = saved.utilities && saved.utilities[FUEL];\n"
+      "      return (u && u !== 'all') ? u : null;\n"
+      "    } catch (e) { return null; }\n"
+      "  }\n"
+      "  function render() {\n"
+      "    var term = sel.value;\n"
+      "    var util = getSelectedUtility();\n"
+      "    var rows;\n"
+      "    if (util && PAYLOAD.by_util && PAYLOAD.by_util[util]) {\n"
+      "      rows = PAYLOAD.by_util[util][term] || [];\n"
+      "    } else {\n"
+      "      rows = PAYLOAD.data[term] || [];\n"
+      "    }\n"
+      "    var heading = document.getElementById('top-rates-heading');\n"
+      "    if (heading) {\n"
+      "      var n = PAYLOAD.top_n || 3;\n"
+      "      var label = util;\n"
+      "      if (util && typeof UTILITIES !== 'undefined' && UTILITIES[FUEL]) {\n"
+      "        var uObj = UTILITIES[FUEL].find(function(u) { return u.value === util; });\n"
+      "        if (uObj) label = uObj.label;\n"
+      "      }\n"
+      "      heading.textContent = util ? ('Top ' + n + ' Rates for ' + label) : ('Top ' + n + ' Rates Right Now');\n"
+      "    }\n"
+
         "    if (rows.length === 0) {\n"
         "      tbody.innerHTML = '<tr><td colspan=\"6\" class=\"empty-cell\">No data for that term.</td></tr>';\n"
         "      return;\n"
@@ -679,21 +682,24 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
     #   12 mo → balance:     the default term most consumers compare against
     #   24 mo → commitment:  locks in rate for 2 years — high reward at a low,
     #                        big regret at a premium
-    TERM_OPTIONS = [6, 12, 24]
+    TERM_OPTIONS = [1, 6, 12, 24, 36]
     TERM_VALUE_CTA = {
+        1:  "Ultra-short 1-month term: maximum flexibility to switch anytime.",
         6:  "Short 6-month term: you can re-shop in 6 months if rates drop.",
         12: "Standard 12-month term: the default benchmark — balances flexibility with rate stability.",
         24: "Long 24-month term: locks in this rate for 2 full years — fantastic when locked at a low, regrettable when locked at a premium.",
+        36: "Maximum 36-month term: complete rate stability for 3 full years.",
     }
 
     pulse_data = {}
 
     if not today_market.empty:
-        for util in sorted(today_market['Utility'].dropna().unique()):
-            u_today_all = today_market[today_market['Utility'] == util]
+        for pid in sorted(today_market['Provider'].dropna().unique()):
+            u_today_all = today_market[today_market['Provider'] == pid]
             if u_today_all.empty:
                 continue
 
+            util = u_today_all['Utility'].iloc[0]
             by_term = {}
 
             for term in TERM_OPTIONS:
@@ -716,7 +722,7 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
 
                 for timeframe_id, days in timeframes.items():
                     cutoff = today_dt - pd.Timedelta(days=days)
-                    hist_u = market_df[(market_df['Utility'] == util)
+                    hist_u = market_df[(market_df['Provider'] == pid)
                                        & (market_df['Term. Length'] == term)
                                        & (market_df['Date'] >= cutoff)]
                     if len(hist_u) < 20:
@@ -807,7 +813,8 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
                     by_term[str(term)] = term_entry
 
             if by_term:
-                pulse_data[util] = {
+                pulse_data[str(pid)] = {
+                    'utility': util,
                     'by_term': by_term,
                     'term_value_advice': {str(t): TERM_VALUE_CTA[t] for t in TERM_OPTIONS},
                 }
@@ -843,7 +850,7 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
 <script>
 (function() {{
     const PULSE_DATA = {pulse_data_json};
-    const TERM_ORDER = ['6', '12', '24'];
+    const TERM_ORDER = ['1', '6', '12', '24', '36'];
     const grid = document.getElementById('market-pulse-grid');
     const tlSelect = document.getElementById('pulse-timeline');
 
@@ -994,7 +1001,7 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
 
             html += `
                 <div class="stat-card" data-utility="${{util}}" style="text-align:left; padding:16px;">
-                    <div style="font-size:0.75em; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:10px;">If you're on ${{util}}</div>
+                    <div style="font-size:0.75em; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:10px;">If you're on ${{data.utility}}</div>
                     ${{headline}}
                     <div style="font-size:0.68em; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; margin:8px 0 6px;">All contract lengths</div>
                     ${{rows}}
@@ -1595,6 +1602,8 @@ body {
     </head>
     <body data-dashboard="{dash_type}">
     <script>
+      var UTILITIES = {js_utilities_json};
+    </script>
     <div id="pwa-install-banner">
       <div class="pwa-content" id="pwa-message">
         <strong>Install RateSavvy</strong>
@@ -1750,8 +1759,6 @@ body {
     (function() {{
       var STORAGE_KEY = 'oet_selection_v1';
       var FUEL = document.body.getAttribute('data-dashboard') || 'electric';
-
-      var UTILITIES = {js_utilities_json};
 
       function loadSelection() {{
         try {{ return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{{}}'); }}
