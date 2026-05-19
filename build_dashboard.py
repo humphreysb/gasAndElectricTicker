@@ -1012,7 +1012,6 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
     hero_section = f"""
         <header class="hero">
             <div class="hero-content">
-                <div class="hero-badge">{icon} Ohio {dashboard_title.split()[0]} Market (Experimental)</div>
                 <h1>Explore Energy Options</h1>
                 <p class="hero-lead">
                     This free community tool tracks the <strong>Apples to Apples</strong> marketplace daily, attempting to filter out complex "fine print" 
@@ -1184,11 +1183,6 @@ body {
   margin-bottom: 40px;
 }
 .hero-content { max-width: 800px; margin: 0 auto; }
-.hero-badge {
-  display: inline-block; background: rgba(255,255,255,0.1);
-  padding: 4px 12px; border-radius: 20px; font-size: 0.85em;
-  font-weight: 600; margin-bottom: 16px; border: 1px solid rgba(255,255,255,0.2);
-}
 .hero h1 {
   font-size: 2.75em; font-weight: 800; margin: 0 0 16px;
   letter-spacing: -0.03em; line-height: 1.1;
