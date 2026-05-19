@@ -280,7 +280,7 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
     lowest_month_name = seasonality.loc[lowest_idx, 'MonthName'] if lowest_idx is not None else None
     lowest_month_avg = float(seasonality.loc[lowest_idx, 'avg']) if lowest_idx is not None else None
 
-    # --- EIA macro overlay (Ohio residential state-average rate) ---
+    # --- EIA macro overlay (state-average rate) ---
     eia_path = Path(__file__).parent / 'eiaData.parquet'
     eia_monthly = pd.DataFrame()
     eia_yearly = pd.DataFrame()
@@ -288,7 +288,13 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
     if eia_path.exists():
         try:
             _eia = pd.read_parquet(eia_path)
-            _eia = _eia[_eia['electric'] == elecHtml].copy()
+            # Filter by electric/gas AND state
+            _mask = (_eia['electric'] == elecHtml)
+            if 'state' in _eia.columns:
+                _mask &= (_eia['state'] == state)
+            
+            _eia = _eia[_mask].copy()
+            
             if not _eia.empty:
                 _eia['Date'] = pd.to_datetime(_eia['Date'])
                 _eia = _eia.sort_values('Date')
@@ -1392,7 +1398,7 @@ body {
                 </div>
                 <div class="calc-field">
                     <label>Compare to rate ({unit})</label>
-                    <input type="number" step="0.00001" id="calc-target-rate" placeholder="Click 🧮 in any table">
+                    <input type="number" step="0.00001" id="calc-target-rate" placeholder="Click 'Compare' in any table">
                 </div>
                 <div class="calc-field">
                     <label>Monthly usage ({usage_unit_label})</label>

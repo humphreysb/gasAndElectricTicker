@@ -65,30 +65,29 @@ def fetch_paged(url, params, max_pages=20):
     return rows
 
 
-def fetch_ohio_electric_residential(api_key):
+def fetch_electric_residential(api_key, state_id):
     params = {
         "api_key": api_key,
         "frequency": "monthly",
         "data[0]": "price",
-        "facets[stateid][]": "OH",
+        "facets[stateid][]": state_id,
         "facets[sectorid][]": "RES",
-        "start": "2001-01",
+        "start": "2019-01",
         "sort[0][column]": "period",
         "sort[0][direction]": "asc",
     }
     return fetch_paged(ELEC_URL, params)
 
 
-def fetch_ohio_gas_residential(api_key):
-    # Series id for Ohio residential gas: PRI_SUM is the natural gas prices summary
-    # facets: duoarea = SOH (state of Ohio), process = PRS (residential price)
+def fetch_gas_residential(api_key, state_id):
+    # facets: duoarea = S + state_id (e.g. SOH, SPA), process = PRS (residential price)
     params = {
         "api_key": api_key,
         "frequency": "monthly",
         "data[0]": "value",
-        "facets[duoarea][]": "SOH",
+        "facets[duoarea][]": f"S{state_id}",
         "facets[process][]": "PRS",
-        "start": "2001-01",
+        "start": "2019-01",
         "sort[0][column]": "period",
         "sort[0][direction]": "asc",
     }
@@ -97,67 +96,58 @@ def fetch_ohio_gas_residential(api_key):
 
 def main():
     key = get_api_key()
-    print("Fetching Ohio residential electric monthly prices...")
-    elec_rows = fetch_ohio_electric_residential(key)
-    print(f"  got {len(elec_rows)} rows")
-
-    print("Fetching Ohio residential natural gas monthly prices...")
-    gas_rows = fetch_ohio_gas_residential(key)
-    print(f"  got {len(gas_rows)} rows")
-
     records = []
-    for r in elec_rows:
-        period = r.get("period")
-        price_cents_kwh = r.get("price")
-        if period is None or price_cents_kwh in (None, ""):
-            continue
-        try:
-            rate = float(price_cents_kwh) / 100.0  # cents/kWh → $/kWh
-        except (TypeError, ValueError):
-            continue
-        records.append(
-            {
+    
+    for state_id in ["OH", "PA"]:
+        print(f"Fetching {state_id} residential electric monthly prices...")
+        elec_rows = fetch_electric_residential(key, state_id)
+        print(f"  got {len(elec_rows)} rows")
+
+        for r in elec_rows:
+            period = r.get("period")
+            price_cents_kwh = r.get("price")
+            if period is None or price_cents_kwh in (None, ""):
+                continue
+            try:
+                rate = float(price_cents_kwh) / 100.0  # cents/kWh → $/kWh
+            except (TypeError, ValueError):
+                continue
+            records.append({
                 "Date": pd.to_datetime(period),
                 "electric": True,
                 "rate": rate,
-                "source": "EIA_OH_RES",
-            }
-        )
+                "source": f"EIA_{state_id}_RES",
+                "state": state_id
+            })
 
-    for r in gas_rows:
-        period = r.get("period")
-        val = r.get("value")
-        if period is None or val in (None, ""):
-            continue
-        try:
-            rate = float(val)  # EIA gives $/Mcf directly for residential
-        except (TypeError, ValueError):
-            continue
-        records.append(
-            {
+        print(f"Fetching {state_id} residential natural gas monthly prices...")
+        gas_rows = fetch_gas_residential(key, state_id)
+        print(f"  got {len(gas_rows)} rows")
+
+        for r in gas_rows:
+            period = r.get("period")
+            val = r.get("value")
+            if period is None or val in (None, ""):
+                continue
+            try:
+                rate = float(val)
+            except (TypeError, ValueError):
+                continue
+            records.append({
                 "Date": pd.to_datetime(period),
                 "electric": False,
                 "rate": rate,
-                "source": "EIA_OH_RES",
-            }
-        )
+                "source": f"EIA_{state_id}_RES",
+                "state": state_id
+            })
 
     if not records:
         print("No data collected — check API key and endpoint params.")
         sys.exit(1)
 
-    df = pd.DataFrame(records).sort_values(["electric", "Date"])
+    df = pd.DataFrame(records).sort_values(["state", "electric", "Date"])
     df.to_parquet(OUT_FILE)
-    e = df[df["electric"]]
-    g = df[~df["electric"]]
-    print(
-        f"\nWrote {OUT_FILE.name}: {len(df)} rows  "
-        f"({len(e)} electric, {len(g)} gas)"
-    )
-    if len(e):
-        print(f"  electric: {e['Date'].min().date()} → {e['Date'].max().date()}")
-    if len(g):
-        print(f"  gas:      {g['Date'].min().date()} → {g['Date'].max().date()}")
+    print(f"\nWrote {OUT_FILE.name}: {len(df)} rows across {df['state'].nunique()} states")
 
 
 if __name__ == "__main__":
