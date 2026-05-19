@@ -22,13 +22,13 @@ A state can be "deregulated" and still flunk all five (New Jersey, New Hampshire
 
 Highest similarity to Ohio. Both fuels, state-run sites, structured comparison tables. Scraper would be a ~20–40% adaptation of `energy_scraper.py`.
 
-### 1. Pennsylvania — **top priority**
+### 1. Pennsylvania — ✅ **SHIPPED**
 - **Electric:** [PAPowerSwitch.com](https://www.papowerswitch.com)
-- **Gas:** [PAGasSwitch.com](https://www.papagasswitch.com)
+- **Gas:** [PAGasSwitch.com](https://www.pagasswitch.com)
 - **Run by:** PA Public Utility Commission
-- **Why it's the best next state:** Closest twin to Ohio. Both fuels, separate-but-parallel state-run comparison engines, ZIP-or-utility filtering, comparison tables with the exact same field set Ohio uses (term, rate, fee, ETF, intro, renewable %). Major delivery utilities are familiar: **PECO, PPL, Duquesne Light, FirstEnergy subsidiaries (Met-Ed, Penelec, West Penn Power), Penn Power**. Gas: **UGI, Columbia Gas, PGW, Peoples Gas, National Fuel**.
-- **Estimated scraper effort:** Low. Fork `energy_scraper.py`, swap URL + column names if any differ, build a PA `providers.py` utility map.
-- **Risks:** PA's site is more JS-heavy than Ohio's in places; may need to inspect the request/response cycle to confirm scrape-ability without a headless browser.
+- **Status:** Live in `scrapers/pa.py`. Daily run emits `pa-electric_dashboard.html` and `pa-gas_dashboard.html`.
+- **Utilities covered:** Electric (8): PECO, PPL, Duquesne, Met-Ed, Penelec, Penn Power, West Penn Power, UGI. Gas (6): UGI, Columbia Gas of PA, PECO Gas, Peoples, National Fuel, PGW.
+- **Notes:** Integer IDs used as `Provider` keys (e.g. 1182 for PECO). Gas rates normalized from $/Ccf to $/Mcf to match Ohio's unit. Adding PA validated the multi-state architecture end-to-end — onboarding the next state should follow the same shape: one scraper module plus four small registry entries.
 
 ### 2. Maryland — **strong second**
 - **Electric:** [MarylandElectricChoice.com](https://www.marylandelectricchoice.com)
@@ -106,12 +106,12 @@ These can be revisited if/when their PUCs publish structured data, but they're n
 
 ## Suggested order
 
-1. **Architecture work (items 1–4 above)** — 1–2 weeks of focused refactor
-2. **Pennsylvania (both fuels)** — closest twin to Ohio, biggest validation of the multi-state model
-3. **Maryland (both fuels)** — second dual-fuel state, locks in the pattern
-4. **Texas (electric)** — biggest single-state audience, validates that single-fuel + non-Ohio market model works
-5. **Illinois (electric, then gas)** — second multi-utility state
-6. **Everything else** — once the platform is proven, each additional state is a contained scraper + utility map PR
+1. ~~**Architecture work (items 1–4 above)**~~ ✅ Done. Foundation is in.
+2. ~~**Pennsylvania (both fuels)**~~ ✅ Done. Multi-state model validated end-to-end.
+3. **Maryland (both fuels)** — next up. Second dual-fuel state, locks in the pattern with a smaller utility list.
+4. **Texas (electric)** — biggest single-state audience, validates the REP-only market model.
+5. **Illinois (electric, then gas)** — second multi-utility state.
+6. **Everything else** — once Maryland + Texas land, each additional state is a contained scraper + utility map PR following the same shape as PA.
 
 ---
-*Last updated: 2026-05-18*
+*Last updated: 2026-05-19*
