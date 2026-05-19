@@ -1072,6 +1072,24 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
 }
+#pwa-install-banner {
+  position: fixed; bottom: 20px; left: 20px; right: 20px; z-index: 2000;
+  background: #1e293b; color: white; padding: 16px 20px; border-radius: 16px;
+  box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3);
+  display: none; align-items: center; justify-content: space-between; gap: 16px;
+  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes slideUp { from { transform: translateY(100px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.pwa-content { flex: 1; font-size: 0.9em; line-height: 1.4; }
+.pwa-content strong { display: block; font-size: 1.1em; margin-bottom: 2px; color: #10b981; }
+.pwa-btn {
+  background: #10b981; color: white; border: none; padding: 10px 18px;
+  border-radius: 10px; font-weight: 700; font-size: 0.9em; cursor: pointer; white-space: nowrap;
+}
+.pwa-close {
+  background: transparent; border: none; color: #94a3b8; font-size: 1.5em; cursor: pointer; padding: 0 4px;
+}
+@media (min-width: 768px) { #pwa-install-banner { max-width: 400px; left: auto; } }
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 body {
@@ -1577,6 +1595,62 @@ body {
     </head>
     <body data-dashboard="{dash_type}">
     <script>
+    <div id="pwa-install-banner">
+      <div class="pwa-content" id="pwa-message">
+        <strong>Install RateSavvy</strong>
+        Add to your home screen for quick access to latest rates.
+      </div>
+      <button class="pwa-btn" id="pwa-install-btn">Install</button>
+      <button class="pwa-close" id="pwa-close-btn">&times;</button>
+    </div>
+
+    <script>
+    (function() {{
+      var deferredPrompt;
+      var banner = document.getElementById('pwa-install-banner');
+      var installBtn = document.getElementById('pwa-install-btn');
+      var closeBtn = document.getElementById('pwa-close-btn');
+      var message = document.getElementById('pwa-message');
+
+      var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+      var isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+      var dismissKey = 'pwa_dismissed_v1';
+      var dismissedAt = localStorage.getItem(dismissKey);
+      var recentlyDismissed = dismissedAt && (Date.now() - parseInt(dismissedAt) < 7 * 24 * 60 * 60 * 1000);
+
+      function showBanner() {{
+        if (isStandalone || recentlyDismissed) return;
+        
+        if (isIOS) {{
+          message.innerHTML = '<strong>Install RateSavvy</strong>Tap the "Share" icon and select "Add to Home Screen"';
+          installBtn.style.display = 'none';
+          banner.style.display = 'flex';
+        }} else {{
+          window.addEventListener('beforeinstallprompt', (e) => {{
+            e.preventDefault();
+            deferredPrompt = e;
+            banner.style.display = 'flex';
+          }});
+        }}
+      }}
+
+      installBtn.addEventListener('click', () => {{
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then((choice) => {{
+          if (choice.outcome === 'accepted') banner.style.display = 'none';
+          deferredPrompt = null;
+        }});
+      }});
+
+      closeBtn.addEventListener('click', () => {{
+        banner.style.display = 'none';
+        localStorage.setItem(dismissKey, Date.now().toString());
+      }});
+
+      showBanner();
+    }})();
+
     if ('serviceWorker' in navigator) {{
     window.addEventListener('load', () => {{
     const swPath = window.location.pathname.includes('gasAndElectricTicker')
