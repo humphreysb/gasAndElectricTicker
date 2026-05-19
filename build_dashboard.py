@@ -476,7 +476,7 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
 
             section = f'<article class="util-card" data-utility="{pid}">'
             section += f'<header class="util-card-head"><h3>{util_name}</h3>{rate_pill}{badge_html}</header>'
-            section += f"<table><thead><tr><th>Supplier</th><th>BBB</th><th>Term</th><th>Rate ({unit})</th></tr></thead><tbody>"
+            section += f"<table><thead><tr><th>Supplier</th><th>BBB</th><th>Term</th><th>Rate ({unit})</th><th></th></tr></thead><tbody>"
 
             for _, row in u_data.iterrows():
                 # Bold if it's the absolute best value for this utility
@@ -492,10 +492,13 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
                 supplier_clean = _clean_supplier_name(row['Supplier'])
                 bbb_html = _bbb_pill_html(supplier_clean)
 
+                calc_btn = f'<button class="btn-calc-small" onclick="window.__useInCalculator(event, {row["rate"]:.5f}, \'{supplier_clean}\')" title="Select this plan for the savings calculator">Compare</button>'
+
                 section += (
                     f"<tr><td>{supplier_clean}</td><td>{bbb_html}</td>"
                     f"<td>{row['Term. Length']} Mo</td>"
-                    f"<td class='{cell_class}'>{rate_display}</td></tr>"
+                    f"<td class='{cell_class}'>{rate_display}</td>"
+                    f"<td>{calc_btn}</td></tr>"
                 )
             section += "</tbody></table></article>"
             table_sections.append(section)
@@ -571,7 +574,7 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
             </div>
             <table class="top-rates-table">
                 <thead>
-                    <tr><th>#</th><th>Utility</th><th>Supplier</th><th>BBB</th><th>Term</th><th>Rate ({unit})</th></tr>
+                    <tr><th>#</th><th>Utility</th><th>Supplier</th><th>BBB</th><th>Term</th><th>Rate ({unit})</th><th></th></tr>
                 </thead>
                 <tbody id="top-rates-tbody"></tbody>
             </table>
@@ -629,6 +632,7 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
         "      return;\n"
         "    }\n"
         "    tbody.innerHTML = rows.map(function(r, i) {\n"
+        "      var calcBtn = '<button class=\"btn-calc-small\" onclick=\"window.__useInCalculator(event, ' + r.rate.toFixed(5) + ', \\'' + esc(r.supplier) + '\\')\" title=\"Select this plan for the savings calculator\">Compare</button>';\n"
         "      return '<tr>' +\n"
         "        '<td class=\"rank-cell\">' + (i + 1) + '</td>' +\n"
         "        '<td>' + esc(r.utility) + '</td>' +\n"
@@ -636,6 +640,7 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
         "        '<td>' + bbbPill(r.supplier, r.bbb, r.bbb_url) + '</td>' +\n"
         "        '<td>' + r.term + ' Mo</td>' +\n"
         "        '<td class=\"rate-cell\">' + r.rate.toFixed(5) + '</td>' +\n"
+        "        '<td>' + calcBtn + '</td>' +\n"
         "      '</tr>';\n"
         "    }).join('');\n"
         "  }\n"
@@ -1275,7 +1280,12 @@ body {
 }
 
 .util-card table { width: 100%; border-collapse: collapse; }
-.calculator-card { margin-bottom: 0 !important; }
+.calculator-card {
+  margin: 40px 0 0 !important;
+  background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%);
+  border: 2px solid var(--primary);
+  border-radius: 24px;
+}
 .util-card th, .util-card td {
   padding: 10px 8px; text-align: left; font-size: 0.9em;
   border-bottom: 1px solid #f1f5f9;
@@ -1286,13 +1296,52 @@ body {
 }
 .min-rate { color: var(--accent); font-weight: 700; }
 
-.calc-form { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
-.calc-form label { font-size: 0.75em; font-weight: 700; color: var(--muted); text-transform: uppercase; }
-.calc-form input, .calc-form select {
-  width: 100%; margin-top: 8px; padding: 12px;
-  border: 1px solid var(--border); border-radius: 10px;
-  background: #f8fafc; font-size: 1em;
+.calc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin-bottom: 24px;
 }
+.calc-field { display: flex; flex-direction: column; gap: 8px; }
+.calc-field label {
+  font-size: 0.7em; font-weight: 800; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+.calc-field input {
+  padding: 12px; border: 1.5px solid var(--border);
+  border-radius: 12px; font-size: 1.1em; font-weight: 600;
+  transition: all 0.2s; background: white;
+}
+.calc-field input:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 4px var(--primary-fade); }
+
+.calc-result-badge {
+  background: white; border-radius: 20px; padding: 24px;
+  text-align: center; box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border); margin-top: 20px;
+}
+.calc-result-value { font-size: 2.8em; font-weight: 800; color: var(--accent); display: block; line-height: 1; margin: 10px 0; }
+.calc-result-label { font-size: 0.95em; color: var(--muted); font-weight: 600; }
+
+.btn-share-cool {
+  background: linear-gradient(135deg, var(--primary) 0%, #1e40af 100%);
+  color: white; border: none; padding: 14px 28px; border-radius: 12px;
+  font-weight: 700; font-size: 1em; cursor: pointer;
+  box-shadow: 0 4px 14px 0 rgba(37, 99, 235, 0.3);
+  transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  margin-top: 20px; width: 100%;
+}
+.btn-share-cool:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4); }
+
+.btn-calc-small {
+  background: var(--primary-fade); color: var(--primary); border: 1px solid var(--primary);
+  border-radius: 6px; padding: 4px 8px; cursor: pointer; font-size: 0.85em;
+  font-weight: 700; transition: all 0.1s; display: inline-flex; align-items: center; gap: 4px;
+}
+.btn-calc-small:hover { background: var(--primary); color: white; }
+.btn-calc-small.selected {
+  background: var(--accent); color: white; border-color: var(--accent);
+}
+.btn-calc-small.selected::before { content: '✓ '; }
 
 .chart-section {
   background: var(--card); border: 1px solid var(--border);
@@ -1332,32 +1381,45 @@ body {
 """
 
     calculator_html = f"""
-        <section class="card calculator-card" aria-label="Savings calculator">
-            <h2 class="section-title" style="margin-top:0">Should I Switch?</h2>
-            <div class="calc-form">
-                <label>My utility
-                    <select id="calc-utility">
-                        <option value="">— pick one —</option>
-                        {util_options}
-                    </select>
-                </label>
-                <label>My current rate ({unit})
+        <section class="card calculator-card" id="savings-calculator" aria-label="Savings calculator">
+            <h2 class="section-title" style="margin-top:0">Savings Potential</h2>
+            <p class="section-subtitle">Compare your current monthly bill to the best rates in the market right now.</p>
+            
+            <div class="calc-grid">
+                <div class="calc-field">
+                    <label>What you pay now ({unit})</label>
                     <input type="number" step="0.00001" id="calc-current-rate" placeholder="e.g. {placeholder_rate}">
-                </label>
-                <label>Monthly usage ({usage_unit_label})
+                </div>
+                <div class="calc-field">
+                    <label>Compare to rate ({unit})</label>
+                    <input type="number" step="0.00001" id="calc-target-rate" placeholder="Click 🧮 in any table">
+                </div>
+                <div class="calc-field">
+                    <label>Monthly usage ({usage_unit_label})</label>
                     <input type="number" step="1" id="calc-usage" placeholder="e.g. {placeholder_usage}">
-                </label>
-                <label>Early termination fee ($, optional)
+                </div>
+                <div class="calc-field">
+                    <label>Termination Fee ($, optional)</label>
                     <input type="number" step="1" id="calc-etf" value="0">
-                </label>
+                </div>
             </div>
-            <div class="calc-results" id="calc-results">
-                <p class="calc-prompt">Enter your details above to see savings.</p>
+
+            <div id="calc-results-wrap" style="display:none;">
+                <div class="calc-result-badge">
+                    <span class="calc-result-label">Potential Annual Savings</span>
+                    <span class="calc-result-value" id="calc-savings-yearly">$0.00</span>
+                    <p id="calc-details" style="font-size:0.9em; color:var(--muted); margin:0;"></p>
+                </div>
+
+                <div id="calc-share-container" style="margin-top: 24px; text-align: center;">
+                    <button id="btn-share" class="btn-share-cool">
+                        🚀 Share My Savings
+                    </button>
+                </div>
             </div>
-            <div id="calc-share-container" style="display:none; margin-top: 16px; border-top: 1px solid var(--border); padding-top: 16px; text-align: right;">
-                <button id="btn-share" class="btn" style="background: var(--primary); color: white; padding: 8px 16px; font-size: 0.85em; cursor: pointer; border: none; box-shadow: var(--shadow-sm);">
-                    🔗 Share My Savings
-                </button>
+            
+            <div id="calc-prompt" class="calc-result-badge" style="background:transparent; border-style:dashed;">
+                <p class="calc-prompt">Enter your rate and usage above to see how much you could save.</p>
             </div>
         </section>
 """
@@ -1366,7 +1428,7 @@ body {
         "<script>\n(function() {\n"
         "  var DATA = " + calc_data_json + ";\n"
         "  var STORAGE_PREFIX = 'gAndETicker_' + DATA.dashboard_type + '_';\n"
-        "  var IDS = ['calc-utility', 'calc-current-rate', 'calc-usage', 'calc-etf'];\n"
+        "  var IDS = ['calc-current-rate', 'calc-target-rate', 'calc-usage', 'calc-etf'];\n"
         "  function $(id) { return document.getElementById(id); }\n"
         "  function loadInputs() {\n"
         "    IDS.forEach(function(id) {\n"
@@ -1380,71 +1442,95 @@ body {
         "    });\n"
         "  }\n"
         "  function fmtMoney(n) {\n"
-        "    return '$' + n.toFixed(2).replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',');\n"
+        "    return '$' + Math.abs(n).toFixed(2).replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',');\n"
         "  }\n"
+        "  window.__useInCalculator = function(event, rate, supplier) {\n"
+        "    var btn = event.currentTarget;\n"
+        "    document.querySelectorAll('.btn-calc-small').forEach(function(b) { b.classList.remove('selected'); });\n"
+        "    btn.classList.add('selected');\n"
+        "    $('calc-target-rate').value = rate;\n"
+        "    var label = document.querySelector('.calc-field:nth-child(2) label');\n"
+        "    if (label) label.textContent = 'Comparing to ' + supplier;\n"
+        "    render();\n"
+        "    $('calc-target-rate').style.backgroundColor = '#fef3c7';\n"
+        "    setTimeout(function() { $('calc-target-rate').style.backgroundColor = 'white'; }, 500);\n"
+        "  };\n"
         "  function render() {\n"
         "    saveInputs();\n"
-        "    var util = $('calc-utility').value;\n"
         "    var myRate = parseFloat($('calc-current-rate').value);\n"
+        "    var targetRate = parseFloat($('calc-target-rate').value);\n"
         "    var usage = parseFloat($('calc-usage').value);\n"
         "    var etf = parseFloat($('calc-etf').value) || 0;\n"
-        "    var results = $('calc-results');\n"
-        "    if (!util || isNaN(myRate) || isNaN(usage) || usage <= 0) {\n"
-        "      results.innerHTML = '<p class=\"calc-prompt\">Enter your utility, current rate, and monthly usage to see savings.</p>';\n"
+        "    \n"
+        "    if (isNaN(myRate) || isNaN(usage) || usage <= 0) {\n"
+        "      $('calc-results-wrap').style.display = 'none';\n"
+        "      $('calc-prompt').style.display = 'block';\n"
         "      return;\n"
         "    }\n"
-        "    var minRate = DATA.min_by_util[util];\n"
-        "    if (minRate === undefined) {\n"
-        "      results.innerHTML = '<p class=\"calc-prompt\">No current rate data for ' + util + '.</p>';\n"
-        "      return;\n"
-        "    }\n"
-        "    var monthlyDiff = (myRate - minRate) * usage;\n"
-        "    var yearlyDiff = monthlyDiff * 12;\n"
-        "    var html = '';\n"
-        "    html += '<p style=\"margin:0 0 12px;color:#555;font-size:0.95em;\">Comparing your <b>' + myRate.toFixed(5) + ' ' + DATA.unit + '</b> rate against ' + util + ' current daily minimum of <b>' + minRate.toFixed(5) + ' ' + DATA.unit + '</b> (as of ' + DATA.latest_date + ').</p>';\n"
-        "    if (monthlyDiff <= 0) {\n"
-        "      html += '<p class=\"calc-neutral\">Your rate is already at or below the current minimum. No switch needed.</p>';\n"
-        "    } else {\n"
-        "      html += '<p class=\"calc-win\">Switching could save you:</p><ul>';\n"
-        "      html += '<li>' + fmtMoney(monthlyDiff) + ' / month</li>';\n"
-        "      html += '<li>' + fmtMoney(yearlyDiff) + ' / year</li>';\n"
-        "      if (etf > 0) {\n"
-        "        var be = Math.ceil(etf / monthlyDiff);\n"
-        "        html += '<li>Breakeven on ' + fmtMoney(etf) + ' early-termination fee: <b>' + be + ' month' + (be === 1 ? '' : 's') + '</b></li>';\n"
+        "    \n"
+        "    // Default to min rate if target not set\n"
+        "    if (isNaN(targetRate)) {\n"
+        "      var saved = JSON.parse(localStorage.getItem('oet_selection_v1') || '{}');\n"
+        "      var fuel = document.body.getAttribute('data-dashboard') || 'electric';\n"
+        "      var util = saved.utilities && saved.utilities[fuel];\n"
+        "      if (util && util !== 'all') {\n"
+        "        targetRate = DATA.min_by_util[util];\n"
         "      }\n"
-        "      html += '</ul>';\n"
         "    }\n"
-        "    results.innerHTML = html;\n"
-        "    $('calc-share-container').style.display = (monthlyDiff > 0) ? 'block' : 'none';\n"
+        "    \n"
+        "    if (isNaN(targetRate)) {\n"
+        "       $('calc-results-wrap').style.display = 'none';\n"
+        "       $('calc-prompt').style.display = 'block';\n"
+        "       return;\n"
+        "    }\n"
+        "    \n"
+        "    $('calc-results-wrap').style.display = 'block';\n"
+        "    $('calc-prompt').style.display = 'none';\n"
+        "    \n"
+        "    var monthlyDiff = (myRate - targetRate) * usage;\n"
+        "    var yearlyDiff = monthlyDiff * 12;\n"
+        "    \n"
+        "    $('calc-savings-yearly').textContent = (yearlyDiff >= 0 ? '' : '-') + fmtMoney(yearlyDiff);\n"
+        "    $('calc-savings-yearly').style.color = yearlyDiff >= 0 ? 'var(--accent)' : 'var(--warn)';\n"
+        "    \n"
+        "    var detailText = 'That is ' + fmtMoney(monthlyDiff) + ' per month savings';\n"
+        "    if (etf > 0 && monthlyDiff > 0) {\n"
+        "      var be = Math.ceil(etf / monthlyDiff);\n"
+        "      detailText += '. Breaks even on your ' + fmtMoney(etf) + ' fee in ' + be + ' months.';\n"
+        "    }\n"
+        "    $('calc-details').textContent = detailText;\n"
         "  }\n"
         "  document.addEventListener('DOMContentLoaded', function() {\n"
         "    loadInputs();\n"
         "    IDS.forEach(function(id) {\n"
         "      var el = $(id);\n"
         "      el.addEventListener('input', render);\n"
-        "      el.addEventListener('change', function() {\n"
-        "        render();\n"
-        "      });\n"
         "    });\n"
         "\n"
         "    // Share Logic\n"
         "    $('btn-share').addEventListener('click', function() {\n"
-        "      var util = $('calc-utility').value;\n"
         "      var myRate = parseFloat($('calc-current-rate').value);\n"
+        "      var targetRate = parseFloat($('calc-target-rate').value);\n"
         "      var usage = parseFloat($('calc-usage').value);\n"
-        "      var minRate = DATA.min_by_util[util];\n"
-        "      var yearlyDiff = (myRate - minRate) * usage * 12;\n"
-        "      var msg = 'I could save ' + fmtMoney(yearlyDiff) + ' / year on my ' + DATA.dashboard_type + ' bill! Check your savings at RateSavvy: ' + window.location.href;\n"
+        "      var yearlyDiff = (myRate - targetRate) * usage * 12;\n"
+        "      \n"
+        "      var fuelEmoji = DATA.dashboard_type === 'electric' ? '⚡' : '🔥';\n"
+        "      var msg = fuelEmoji + ' I just found ' + fmtMoney(yearlyDiff) + '/year in energy savings using RateSavvy!\\n\\nCheck your own rates at: ' + window.location.href;\n"
+        "      \n"
         "      if (navigator.share) {\n"
-        "        navigator.share({ title: 'RateSavvy', text: msg, url: window.location.href }).catch(function(e) { console.error('Error sharing:', e); });\n"
+        "        navigator.share({ title: 'RateSavvy Savings', text: msg, url: window.location.href }).catch(function(e) { console.error('Error sharing:', e); });\n"
         "      } else {\n"
         "        navigator.clipboard.writeText(msg).then(function() {\n"
-        "          alert('Sharing message copied to clipboard!');\n"
+        "          var originalText = $('btn-share').innerHTML;\n"
+        "          $('btn-share').innerHTML = '✅ Copied to Clipboard!';\n"
+        "          setTimeout(function() { $('btn-share').innerHTML = originalText; }, 2000);\n"
         "        });\n"
         "      }\n"
         "    });\n"
         "\n"
         "    render();\n"
+        "    // Re-render when utility changes to update the default targetRate if needed\n"
+        "    document.getElementById('utility-select').addEventListener('change', render);\n"
         "  });\n"
         "})();\n</script>"
     )
@@ -1719,7 +1805,7 @@ body {
     {market_pulse_html}
     {calculator_html}
     <h2 class="section-title">Available Plans by Delivery Utility</h2>
-    <p class="section-subtitle">Every supplier currently offering plans through each delivery utility in your area, sorted by contract length. The lowest rate per term is highlighted.</p>
+    <p class="section-subtitle">Every supplier currently offering plans through each delivery utility in your area, sorted by rate. The lowest rate for each provider is highlighted.</p>
     <div class="leaderboard-cards">
     {"".join(table_sections)}
     </div>
