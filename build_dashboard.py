@@ -1408,9 +1408,9 @@ body {
         "      var usage = parseFloat($('calc-usage').value);\n"
         "      var minRate = DATA.min_by_util[util];\n"
         "      var yearlyDiff = (myRate - minRate) * usage * 12;\n"
-        "      var msg = 'I could save ' + fmtMoney(yearlyDiff) + ' / year on my ' + DATA.dashboard_type + ' bill! Check your savings at the Ohio Energy Tracker: ' + window.location.href;\n"
+        "      var msg = 'I could save ' + fmtMoney(yearlyDiff) + ' / year on my ' + DATA.dashboard_type + ' bill! Check your savings at RateSavvy: ' + window.location.href;\n"
         "      if (navigator.share) {\n"
-        "        navigator.share({ title: 'Ohio Energy Tracker', text: msg, url: window.location.href }).catch(function(e) { console.error('Error sharing:', e); });\n"
+        "        navigator.share({ title: 'RateSavvy', text: msg, url: window.location.href }).catch(function(e) { console.error('Error sharing:', e); });\n"
         "      } else {\n"
         "        navigator.clipboard.writeText(msg).then(function() {\n"
         "          alert('Sharing message copied to clipboard!');\n"
@@ -1544,11 +1544,11 @@ body {
     <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Ohio {dashboard_title}</title>
-    <meta property="og:title" content="Ohio {dashboard_title}">
-    <meta property="og:description" content="Track daily energy rates in Ohio and find the best fixed-rate plans.">
+    <title>{dashboard_title} · RateSavvy</title>
+    <meta property="og:title" content="{dashboard_title} · RateSavvy">
+    <meta property="og:description" content="Track daily energy rates and find the best fixed-rate plans in Ohio.">
     <meta property="og:type" content="website">
-    <meta name="description" content="Free, open-source tracker for Ohio energy rates. Compare utility supply charges daily.">
+    <meta name="description" content="RateSavvy — daily energy rate comparison so you can lock in a better supplier. Currently covering Ohio.">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0f172a">
     <link rel="apple-touch-icon" href="icon-192.png">
@@ -1572,7 +1572,7 @@ body {
     </script>
     <nav class="topnav">
     <div class="topnav-inner">
-    <span class="brand"><a href="index.html" style="color:inherit;text-decoration:none;">Ohio Energy Tracker</a></span>
+    <span class="brand"><a href="index.html" style="color:inherit;text-decoration:none;">RateSavvy</a></span>
     <div class="tabs">
     <a href="electric_dashboard.html" class="tab {elec_active}" data-tab="electric">Electric</a>
     <a href="gas_dashboard.html" class="tab {gas_active}" data-tab="gas">Gas</a>

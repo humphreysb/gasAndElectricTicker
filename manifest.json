@@ -1,7 +1,7 @@
 {
-  "name": "Ohio Energy Tracker",
-  "short_name": "Ohio Energy",
-  "description": "Track the best fixed-rate energy plans in Ohio.",
+  "name": "RateSavvy",
+  "short_name": "RateSavvy",
+  "description": "Find the best fixed-rate energy supplier each day. Currently covering Ohio.",
   "start_url": "electric_dashboard.html",
   "display": "standalone",
   "background_color": "#0f172a",
