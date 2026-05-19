@@ -108,10 +108,13 @@ These can be revisited if/when their PUCs publish structured data, but they're n
 
 1. ~~**Architecture work (items 1–4 above)**~~ ✅ Done. Foundation is in.
 2. ~~**Pennsylvania (both fuels)**~~ ✅ Done. Multi-state model validated end-to-end.
-3. **Maryland (both fuels)** — next up. Second dual-fuel state, locks in the pattern with a smaller utility list.
-4. **Texas (electric)** — biggest single-state audience, validates the REP-only market model.
-5. **Illinois (electric, then gas)** — second multi-utility state.
-6. **Everything else** — once Maryland + Texas land, each additional state is a contained scraper + utility map PR following the same shape as PA.
+3. **Maryland (both fuels)** — 🟡 brief: [`MD_SCRAPER_BRIEF.md`](MD_SCRAPER_BRIEF.md). Locks in the dual-fuel pattern with a smaller utility list.
+4. **Illinois (electric, gas if scrapable)** — 🟡 brief: [`IL_SCRAPER_BRIEF.md`](IL_SCRAPER_BRIEF.md). Gas may be PDF-only on the ICC site; if so, ship electric-only and revisit.
+5. **New York (both fuels)** — 🟡 brief: [`NY_SCRAPER_BRIEF.md`](NY_SCRAPER_BRIEF.md). Single comparison site for both fuels, six EDCs — the largest utility count of any Phase 1 state.
+6. **Texas (electric)** — Phase 2. Biggest single-state audience, validates the REP-only market model (no traditional utility-supplier split).
+7. **Everything else** — once Phase 1 lands, each additional state is a contained scraper + utility-map PR.
+
+See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the multi-provider hosting plan (GitHub Actions + Cloudflare Pages + R2) and the free-tier discipline rules.
 
 ---
 *Last updated: 2026-05-19*
