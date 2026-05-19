@@ -605,12 +605,12 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
         "})();\n</script>"
     )
 
-    # --- 6. RATE REALITY CHECK ENGINE ---
-    # Premise: comparing today's best market rate against the historical *minimum*
-    # (the best deal that was actually available) is what consumers actually want
-    # to know. A rate at the 30th percentile of last year still might be 20%+
-    # worse than what was available 6 months ago — and that's the truth a
-    # consumer needs to make a switching decision.
+    # --- 6. RATE REALITY CHECK ENGINE (supplier-focused) ---
+    # The user can't change their delivery utility — but they CAN change their
+    # supplier, and that's where the savings come from. This section names the
+    # specific supplier offering today's best deal for each utility, and
+    # compares that against the best supplier offer that was actually
+    # available in the selected lookback window.
     today_dt = today_df['Date'].max()
 
     timeframes = {
@@ -620,74 +620,100 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
         '5y': 365*5
     }
 
-    pulse_data = {}
-    util_today = today_df.groupby('Utility')['rate'].min().to_dict()
-
     rate_fmt = (lambda r: f"{r*100:.2f}¢/kWh") if elecHtml else (lambda r: f"${r:.2f}/MCF")
 
-    for timeframe_id, days in timeframes.items():
-        cutoff = today_dt - pd.Timedelta(days=days)
-        hist_tf = filtered_df[filtered_df['Date'] >= cutoff]
+    # Exclude utility-default (PTC/SCO) rows — Rate Reality Check is about
+    # switching to a competitive supplier, not staying on the default.
+    market_df = filtered_df[filtered_df['Supplier'] != 'Utility'].copy()
+    today_market = today_df[today_df['Supplier'] != 'Utility'].copy()
 
-        for util, today_min in util_today.items():
-            if util not in pulse_data: pulse_data[util] = {}
+    pulse_data = {}
 
-            hist_util = hist_tf[hist_tf['Utility'] == util]['rate']
-            if len(hist_util) < 30:
+    if not today_market.empty:
+        for util in sorted(today_market['Utility'].dropna().unique()):
+            u_today = today_market[today_market['Utility'] == util]
+            if u_today.empty:
                 continue
 
-            hist_low = float(hist_util.min())
-            hist_median = float(hist_util.median())
-            # premium = how much more today costs vs the historical low
-            premium_pct = (today_min / hist_low - 1) * 100 if hist_low > 0 else 0
+            # Today's best supplier for this utility
+            best_idx = u_today['rate'].idxmin()
+            best_today = u_today.loc[best_idx]
+            today_supplier = _clean_supplier_name(best_today['Supplier'])
+            today_rate = float(best_today['rate'])
+            today_term = int(best_today['Term. Length']) if pd.notna(best_today['Term. Length']) else None
 
-            window_label = {'6mo': '6 months', '1y': 'year', '3y': '3 years', '5y': '5 years'}[timeframe_id]
-
-            if premium_pct < 5:
-                status, color, icon = f"Near {window_label} low", "#16a34a", "🟢"
-                advice = f"Today's best rate is within 5% of the lowest available in the past {window_label}. Strong moment to lock in a longer term."
-            elif premium_pct < 15:
-                status, color, icon = "Slight premium", "#65a30d", "🟢"
-                advice = f"Reasonable rate, but {premium_pct:.0f}% above the best deal seen in the past {window_label}. Worth locking in if your contract is expiring."
-            elif premium_pct < 30:
-                status, color, icon = "Notable premium", "#d97706", "🟡"
-                advice = f"You'd pay {premium_pct:.0f}% more than the best rate seen in the past {window_label} ({rate_fmt(hist_low)}). If your contract isn't expiring soon, wait."
-            else:
-                status, color, icon = "Poor timing", "#b91c1c", "🔴"
-                advice = f"Today's best is {premium_pct:.0f}% above the {window_label} low of {rate_fmt(hist_low)}. Switching now locks in elevated pricing — wait if your current contract allows."
-
-            pulse_data[util][timeframe_id] = {
-                'today_rate': rate_fmt(today_min),
-                'hist_low': rate_fmt(hist_low),
-                'hist_median': rate_fmt(hist_median),
-                'premium_pct': round(premium_pct),
-                'status': status,
-                'color': color,
-                'icon': icon,
-                'advice': advice
+            pulse_data[util] = {
+                'today_supplier': today_supplier,
+                'today_rate': rate_fmt(today_rate),
+                'today_rate_raw': today_rate,
+                'today_term': today_term,
+                'windows': {}
             }
+
+            for timeframe_id, days in timeframes.items():
+                cutoff = today_dt - pd.Timedelta(days=days)
+                hist_u = market_df[(market_df['Utility'] == util) & (market_df['Date'] >= cutoff)]
+                if len(hist_u) < 30:
+                    continue
+
+                hist_low_idx = hist_u['rate'].idxmin()
+                hist_low_row = hist_u.loc[hist_low_idx]
+                hist_low_rate = float(hist_low_row['rate'])
+                hist_low_supplier = _clean_supplier_name(hist_low_row['Supplier'])
+                hist_low_date = hist_low_row['Date'].strftime('%b %Y')
+
+                premium_pct = (today_rate / hist_low_rate - 1) * 100 if hist_low_rate > 0 else 0
+
+                window_label = {'6mo': '6 months', '1y': 'year', '3y': '3 years', '5y': '5 years'}[timeframe_id]
+
+                # Tighter thresholds — most rates won't be near a long-term low
+                if premium_pct < 5:
+                    status, color, icon = f"Near {window_label} low", "#16a34a", "🟢"
+                    cta = f"Switch to {today_supplier} — you're within 5% of the best deal seen in the past {window_label}."
+                elif premium_pct < 15:
+                    status, color, icon = "Reasonable to switch", "#65a30d", "🟢"
+                    cta = f"Switching to {today_supplier} gets you a decent rate, but {premium_pct:.0f}% above the best deal of the past {window_label} ({hist_low_supplier}, {rate_fmt(hist_low_rate)} in {hist_low_date})."
+                elif premium_pct < 30:
+                    status, color, icon = "Switching premium", "#d97706", "🟡"
+                    cta = f"Switching now pays {premium_pct:.0f}% more than the best supplier deal in the past {window_label} ({hist_low_supplier} offered {rate_fmt(hist_low_rate)} in {hist_low_date}). Wait if you can."
+                else:
+                    status, color, icon = "Bad time to switch", "#b91c1c", "🔴"
+                    cta = f"Today's best switch ({today_supplier}, {rate_fmt(today_rate)}) is {premium_pct:.0f}% above the {window_label} low ({hist_low_supplier} at {rate_fmt(hist_low_rate)}, {hist_low_date}). Locking in now overpays — wait if your current plan allows."
+
+                pulse_data[util]['windows'][timeframe_id] = {
+                    'hist_low_supplier': hist_low_supplier,
+                    'hist_low_rate': rate_fmt(hist_low_rate),
+                    'hist_low_date': hist_low_date,
+                    'premium_pct': round(premium_pct),
+                    'status': status,
+                    'color': color,
+                    'icon': icon,
+                    'cta': cta
+                }
 
     pulse_data_json = json.dumps(pulse_data)
 
     market_pulse_html = f"""
         <section class="card" style="padding: 0; overflow: hidden;">
-            <div style="background: #f1f5f9; padding: 12px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-                <h2 style="margin: 0; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);">Rate Reality Check: How does today's best deal stack up?</h2>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <span style="font-size: 0.7em; font-weight: 700; color: var(--muted);">COMPARE AGAINST:</span>
-                    <select id="pulse-timeline" style="padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border); font-size: 0.75em; font-weight: 700; color: var(--text);">
-                        <option value="6mo">Last 6 Months</option>
-                        <option value="1y" selected>Last 1 Year</option>
-                        <option value="3y">Last 3 Years</option>
-                        <option value="5y">Last 5 Years</option>
-                    </select>
+            <div style="background: #f1f5f9; padding: 16px 24px; border-bottom: 1px solid var(--border);">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                    <h2 style="margin: 0; font-size: 1.1em; font-weight: 800; letter-spacing: -0.02em;">Rate Reality Check — Is it a good time to switch suppliers?</h2>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 0.7em; font-weight: 700; color: var(--muted);">COMPARE AGAINST:</span>
+                        <select id="pulse-timeline" style="padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border); font-size: 0.75em; font-weight: 700; color: var(--text);">
+                            <option value="6mo">Last 6 Months</option>
+                            <option value="1y" selected>Last 1 Year</option>
+                            <option value="3y">Last 3 Years</option>
+                            <option value="5y">Last 5 Years</option>
+                        </select>
+                    </div>
                 </div>
+                <p style="margin: 6px 0 0; font-size: 0.85em; color: var(--muted);">
+                    Your savings come from switching to a competitive <strong>supplier</strong> — not from your delivery utility. Each card shows today's best supplier deal compared to the best deal that was actually available in your lookback window.
+                </p>
             </div>
-            <div id="market-pulse-grid" class="hero-stats" style="padding: 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; justify-content: stretch;">
+            <div id="market-pulse-grid" class="hero-stats" style="padding: 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; justify-content: stretch;">
                 <!-- JavaScript will populate cards here -->
-            </div>
-            <div style="background: #f8fafc; padding: 8px 24px; border-top: 1px solid var(--border); font-size: 0.7em; color: var(--muted); text-align: center;">
-                Each card compares today's best market rate to the lowest rate actually available in the selected window. A "premium" means you'd pay that much more than the best deal recently seen.
             </div>
         </section>
     """ if pulse_data else ""
@@ -698,30 +724,40 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
     const PULSE_DATA = {pulse_data_json};
     const grid = document.getElementById('market-pulse-grid');
     const select = document.getElementById('pulse-timeline');
-    
+
     function renderPulse(timeframe) {{
         if (!grid) return;
         let html = '';
-        for (const [util, tfData] of Object.entries(PULSE_DATA)) {{
-            const data = tfData[timeframe];
-            if (!data) continue;
-            
-            const premiumLabel = data.premium_pct <= 0 ? 'At the low' : `+${{data.premium_pct}}% above low`;
+        for (const [util, data] of Object.entries(PULSE_DATA)) {{
+            const w = data.windows[timeframe];
+            if (!w) continue;
+
+            const premiumLabel = w.premium_pct <= 0 ? 'At the low' : `+${{w.premium_pct}}% over low`;
+            const termStr = data.today_term ? `${{data.today_term}}-mo term` : '';
+
             html += `
-                <div class="stat-card" style="border-left: 4px solid ${{data.color}}; text-align: left;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <span class="stat-label">${{util}}</span>
-                        <span style="font-size: 0.8em; font-weight: 800; color: ${{data.color}};">${{data.icon}} ${{data.status}}</span>
+                <div class="stat-card" data-utility="${{util}}" style="border-left: 4px solid ${{w.color}}; text-align: left; padding: 16px;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 10px;">
+                        <span style="font-size: 0.7em; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;">If you're on ${{util}}</span>
+                        <span style="font-size: 0.75em; font-weight: 800; color: ${{w.color}}; white-space: nowrap;">${{w.icon}} ${{w.status}}</span>
                     </div>
-                    <div style="font-size: 1.15em; font-weight: 800; margin-bottom: 2px;">${{data.today_rate}} <span style="font-size: 0.7em; font-weight: 700; color: ${{data.color}};">(${{premiumLabel}})</span></div>
-                    <div style="font-size: 0.7em; color: var(--muted); margin-bottom: 8px;">Window low: ${{data.hist_low}} · median: ${{data.hist_median}}</div>
-                    <div style="font-size: 0.75em; color: var(--text); line-height: 1.4;">${{data.advice}}</div>
+                    <div style="font-size: 0.7em; color: var(--muted); margin-bottom: 2px;">Today's best supplier</div>
+                    <div style="font-size: 1.05em; font-weight: 800; margin-bottom: 2px;">${{data.today_supplier}}</div>
+                    <div style="font-size: 0.95em; font-weight: 700; color: var(--text); margin-bottom: 8px;">
+                        ${{data.today_rate}}
+                        <span style="font-size: 0.7em; font-weight: 600; color: var(--muted);">${{termStr ? ' · ' + termStr : ''}}</span>
+                        <span style="font-size: 0.75em; font-weight: 700; color: ${{w.color}}; margin-left: 6px;">${{premiumLabel}}</span>
+                    </div>
+                    <div style="font-size: 0.7em; color: var(--muted); margin-bottom: 8px; padding: 6px 8px; background: #f8fafc; border-radius: 6px;">
+                        Recent low: <strong>${{w.hist_low_supplier}}</strong> at <strong>${{w.hist_low_rate}}</strong> in ${{w.hist_low_date}}
+                    </div>
+                    <div style="font-size: 0.78em; color: var(--text); line-height: 1.4;">${{w.cta}}</div>
                 </div>
             `;
         }}
         grid.innerHTML = html || '<p style="grid-column: 1/-1; text-align: center; color: var(--muted); font-size: 0.9em; padding: 20px;">Insufficient historical data for this timeline.</p>';
     }}
-    
+
     if (select) {{
         select.addEventListener('change', (e) => renderPulse(e.target.value));
         renderPulse('1y');
