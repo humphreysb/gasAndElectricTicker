@@ -2035,6 +2035,13 @@ STATE_CONFIG = {
         'elec_threshold': 0.09,
         'gas_threshold':  3.00,
     },
+    'IL': {
+        'name': 'Illinois',
+        'elec_file': 'il-electric_dashboard.html',
+        'gas_file':  'il-gas_dashboard.html',
+        'elec_threshold': 0.09,   # ComEd PTC has been ~9–11 cents/kWh
+        'gas_threshold':  5.00,   # IL gas PTC ~$0.36/therm × 10.37 ≈ $3.73/Mcf; cushion above
+    },
 }
 
 

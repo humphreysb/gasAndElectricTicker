@@ -50,6 +50,21 @@ STATES = {
             4424: 'Philadelphia Gas Works (PGW)',
         },
     },
+    'IL': {
+        # Keys are the `said` ID used in icc.illinois.gov URLs.
+        'elec': {
+            1: 'ComEd',
+            2: 'Ameren Illinois (Rate Zone I)',
+            3: 'Ameren Illinois (Rate Zone II)',
+            4: 'Ameren Illinois (Rate Zone III)',
+            5: 'MidAmerican',
+        },
+        'gas': {
+            1: 'North Shore Gas',
+            2: 'Nicor Gas',
+            3: 'Peoples Gas',
+        },
+    },
 }
 
 
