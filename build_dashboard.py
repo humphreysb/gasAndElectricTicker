@@ -1232,7 +1232,7 @@ body {
     <div class="leaderboard-cards">
     {"".join(table_sections)}
     </div>
-    <details class="chart-section" open>
+    <details class="chart-section">
     <summary>Market Dynamics</summary>
     <div class="chart-body">
     <div class="chart-controls">
