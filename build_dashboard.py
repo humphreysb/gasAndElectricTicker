@@ -73,16 +73,23 @@ except ImportError:
     elec = {9:'AES Power', 2:'AEP', 4:'Duke', 7:'Ohio Edison', 6:'Ilumminating Co', 3:'Toledo Edison'}
     gas = {1:'Enbridge-Dominion', 11:'Centerpoint', 10:'Duke', 8:'Columbia'}
 
-def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url, top_link_text, threshold_rate):
+def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url, top_link_text, threshold_rate, state='OH'):
     # --- 2. LOAD & INITIAL FILTERING ---
     df = pd.read_parquet(file_path)
 
+    # Backfill state for any rows scraped before the multi-state column existed.
+    if 'state' not in df.columns:
+        df['state'] = 'OH'
+    else:
+        df['state'] = df['state'].fillna('OH')
+
     base_mask = (
+        (df['state'] == state) &
         (df['electric'] == elecHtml) &
         (df['Fixed Rate'] == True) &
         (df['intro. price'] == False) &
         (
-            (df['Supplier'] == 'Utility') | 
+            (df['Supplier'] == 'Utility') |
             (
                 (df['Term. Length'] >= 6) &
                 (df['Early Term. Fee'] == 0) &

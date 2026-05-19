@@ -131,6 +131,9 @@ else:
 dfElec = get_data("Electric",providers.elec)
 dfGas = get_data("Gas",providers.gas)
 dfNew = pd.concat([dfElec, dfGas], ignore_index=True)
+# Tag rows with their source state so the dataset can hold multiple states
+# once additional scrapers are added.
+dfNew['state'] = 'OH'
 
 # Concat new data with old data
 if newFile:
