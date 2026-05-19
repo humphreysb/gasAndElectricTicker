@@ -67,11 +67,7 @@ def _bbb_pill_html(cleaned_supplier):
     )
 
 # 1. Import utility names from your providers.py file
-try:
-    from providers import elec, gas
-except ImportError:
-    elec = {9:'AES Power', 2:'AEP', 4:'Duke', 7:'Ohio Edison', 6:'Ilumminating Co', 3:'Toledo Edison'}
-    gas = {1:'Enbridge-Dominion', 11:'Centerpoint', 10:'Duke', 8:'Columbia'}
+import providers
 
 def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url, top_link_text, threshold_rate, state='OH'):
     # --- 2. LOAD & INITIAL FILTERING ---
@@ -110,10 +106,9 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
     filtered_df['Date'] = filtered_df['Date'].dt.tz_convert('US/Eastern')
 
     # --- 4. APPLY UTILITY NAMES ---
-    if elecHtml:
-        filtered_df['Utility'] = filtered_df['Provider'].map(elec)
-    else:
-        filtered_df['Utility'] = filtered_df['Provider'].map(gas)
+    state_util_map = providers.for_state(state)
+    util_map = state_util_map['elec'] if elecHtml else state_util_map['gas']
+    filtered_df['Utility'] = filtered_df['Provider'].map(util_map)
     
     filtered_df['Utility'] = filtered_df['Utility'].fillna(filtered_df['Supplier'].str.split().str[0])
 
@@ -1549,6 +1544,14 @@ body {
         "})();\n</script>"
     )
     
+    # Prepare JS utility objects for the state selector
+    state_util_map = providers.for_state(state)
+    js_utilities = {
+        'electric': [{'value': str(k), 'label': v} for k, v in state_util_map['elec'].items()],
+        'gas': [{'value': str(k), 'label': v} for k, v in state_util_map['gas'].items()]
+    }
+    js_utilities_json = json.dumps(js_utilities)
+
     full_html = f"""<!DOCTYPE html>
     <html lang="en">
     <head>
@@ -1669,22 +1672,7 @@ body {
       var STORAGE_KEY = 'oet_selection_v1';
       var FUEL = document.body.getAttribute('data-dashboard') || 'electric';
 
-      var UTILITIES = {{
-        electric: [
-          {{ value: 'AEP', label: 'AEP Ohio' }},
-          {{ value: 'AES Power', label: 'AES Ohio (formerly DP&L)' }},
-          {{ value: 'Duke', label: 'Duke Energy' }},
-          {{ value: 'Ohio Edison', label: 'Ohio Edison' }},
-          {{ value: 'Ilumminating Co', label: 'The Illuminating Co' }},
-          {{ value: 'Toledo Edison', label: 'Toledo Edison' }}
-        ],
-        gas: [
-          {{ value: 'Enbridge-Dominion', label: 'Enbridge (Dominion East Ohio)' }},
-          {{ value: 'Columbia', label: 'Columbia Gas of Ohio' }},
-          {{ value: 'Duke', label: 'Duke Energy' }},
-          {{ value: 'Centerpoint', label: 'CenterPoint Energy' }}
-        ]
-      }};
+      var UTILITIES = {js_utilities_json};
 
       function loadSelection() {{
         try {{ return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{{}}'); }}
@@ -1838,13 +1826,13 @@ STATE_CONFIG = {
         'elec_threshold': 0.0869,
         'gas_threshold': 2.99,
     },
-    # 'PA': {
-    #     'name': 'Pennsylvania',
-    #     'elec_file': 'pa-electric_dashboard.html',
-    #     'gas_file':  'pa-gas_dashboard.html',
-    #     'elec_threshold': 0.09,
-    #     'gas_threshold':  3.00,
-    # },
+    'PA': {
+        'name': 'Pennsylvania',
+        'elec_file': 'pa-electric_dashboard.html',
+        'gas_file':  'pa-gas_dashboard.html',
+        'elec_threshold': 0.09,
+        'gas_threshold':  3.00,
+    },
 }
 
 

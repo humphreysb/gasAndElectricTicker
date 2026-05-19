@@ -9,6 +9,6 @@ Each state lives in its own module and exposes:
 To onboard a new state, add a module here and append it to ALL_SCRAPERS.
 """
 
-from . import oh
+from . import oh, pa
 
-ALL_SCRAPERS = [oh]
+ALL_SCRAPERS = [oh, pa]

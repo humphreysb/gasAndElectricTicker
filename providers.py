@@ -30,7 +30,26 @@ STATES = {
             8: 'Columbia',
         },
     },
-    # 'PA': {...} once the Pennsylvania scraper lands.
+    'PA': {
+        'elec': {
+            1182: 'PECO Energy',
+            1186: 'PPL Electric Utilities',
+            1180: 'Duquesne Light',
+            1181: 'Met-Ed',
+            1183: 'Penelec',
+            1184: 'Penn Power',
+            1189: 'West Penn Power',
+            1187: 'UGI',
+        },
+        'gas': {
+            4425: 'UGI Utilities',
+            4420: 'Columbia Gas of PA',
+            4422: 'PECO Gas',
+            4423: 'Peoples Natural Gas',
+            4421: 'National Fuel Gas',
+            4424: 'Philadelphia Gas Works (PGW)',
+        },
+    },
 }
 
 
