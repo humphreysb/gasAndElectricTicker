@@ -471,7 +471,7 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
             badge_html = '<span class="badge-90d-low" title="Today\'s minimum matches the lowest rate in the last 90 days">90-DAY LOW</span>' if is_90d_low_by_util.get(util, False) else ''
             rate_pill = f'<span class="pill pill-rate">Min today: {current_min:.5f} {unit}</span>'
 
-            section = '<article class="util-card">'
+            section = f'<article class="util-card" data-utility="{util}">'
             section += f'<header class="util-card-head"><h3>{util}</h3>{rate_pill}{badge_html}</header>'
             section += f"<table><thead><tr><th>Supplier</th><th>BBB</th><th>Term</th><th>Rate ({unit})</th></tr></thead><tbody>"
 
@@ -500,6 +500,7 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
         table_sections = ['<p class="empty-state">No new data has been updated for today yet.</p>']
 
     # --- 6c. TOP 5 RATES SECTION DATA ---
+    TOP_N = 3
     if not today_df.empty:
         today_clean = today_df.copy()
         today_clean['SupplierClean'] = today_clean['Supplier'].apply(_clean_supplier_name)
@@ -509,9 +510,14 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
                        .sort_values('rate')
         )
         unique_terms = sorted({int(t) for t in today_dedup['Term. Length'].unique()})
+
+        # Build aggregate buckets (top N across all utilities) + per-utility buckets
         top_rates_buckets = {'all': []}
         for t in unique_terms:
             top_rates_buckets[str(t)] = []
+
+        by_util = {}  # { util: { 'all': [...], '12': [...] } }
+
         for _, row in today_dedup.iterrows():
             rating, url = _bbb_entry(row['SupplierClean'])
             entry = {
@@ -522,12 +528,24 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
                 'bbb': rating,
                 'bbb_url': url,
             }
-            if len(top_rates_buckets['all']) < 5:
-                top_rates_buckets['all'].append(entry)
             tkey = str(entry['term'])
-            if tkey in top_rates_buckets and len(top_rates_buckets[tkey]) < 5:
+
+            if len(top_rates_buckets['all']) < TOP_N:
+                top_rates_buckets['all'].append(entry)
+            if tkey in top_rates_buckets and len(top_rates_buckets[tkey]) < TOP_N:
                 top_rates_buckets[tkey].append(entry)
-        top_rates_payload = {'unit': unit, 'data': top_rates_buckets}
+
+            u = entry['utility']
+            if u not in by_util:
+                by_util[u] = {'all': []}
+                for t in unique_terms:
+                    by_util[u][str(t)] = []
+            if len(by_util[u]['all']) < TOP_N:
+                by_util[u]['all'].append(entry)
+            if tkey in by_util[u] and len(by_util[u][tkey]) < TOP_N:
+                by_util[u][tkey].append(entry)
+
+        top_rates_payload = {'unit': unit, 'data': top_rates_buckets, 'by_util': by_util, 'top_n': TOP_N}
         top_rates_term_options = '<option value="all">All terms</option>' + "".join(
             f'<option value="{t}">{t} months</option>' for t in unique_terms
         )
@@ -541,7 +559,7 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
     if top_rates_available:
         top_rates_section_html = f"""
         <section class="card top-rates-card">
-            <h2 class="section-title" style="margin-top:0">Top 5 Rates Right Now</h2>
+            <h2 class="section-title" style="margin-top:0" id="top-rates-heading">Top 3 Rates Right Now</h2>
             <div class="top-rates-controls">
                 <label>Filter by term
                     <select id="top-rates-term-select">{top_rates_term_options}</select>
@@ -574,9 +592,28 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
         "    }\n"
         "    return '<a class=\"bbb-pill bbb-unknown\" href=\"' + href + '\" target=\"_blank\" rel=\"noopener\" title=\"No rating cached — click to look up\">—</a>';\n"
         "  }\n"
+        "  function getSelectedUtility() {\n"
+        "    try {\n"
+        "      var saved = JSON.parse(localStorage.getItem('oet_selection_v1') || '{}');\n"
+        "      var fuel = document.body.getAttribute('data-dashboard') || 'electric';\n"
+        "      var u = saved.utilities && saved.utilities[fuel];\n"
+        "      return (u && u !== 'all') ? u : null;\n"
+        "    } catch (e) { return null; }\n"
+        "  }\n"
         "  function render() {\n"
         "    var term = sel.value;\n"
-        "    var rows = (PAYLOAD.data[term] || []);\n"
+        "    var util = getSelectedUtility();\n"
+        "    var rows;\n"
+        "    if (util && PAYLOAD.by_util && PAYLOAD.by_util[util]) {\n"
+        "      rows = PAYLOAD.by_util[util][term] || [];\n"
+        "    } else {\n"
+        "      rows = PAYLOAD.data[term] || [];\n"
+        "    }\n"
+        "    var heading = document.getElementById('top-rates-heading');\n"
+        "    if (heading) {\n"
+        "      var n = PAYLOAD.top_n || 3;\n"
+        "      heading.textContent = util ? ('Top ' + n + ' Rates for ' + util) : ('Top ' + n + ' Rates Right Now');\n"
+        "    }\n"
         "    if (rows.length === 0) {\n"
         "      tbody.innerHTML = '<tr><td colspan=\"6\" class=\"empty-cell\">No data for that term.</td></tr>';\n"
         "      return;\n"
@@ -592,6 +629,8 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
         "      '</tr>';\n"
         "    }).join('');\n"
         "  }\n"
+        "  // expose so the utility selector can trigger re-render after changes\n"
+        "  window.__renderTopRates = render;\n"
         "  var KEY = 'gAndETicker_top_rates_term_' + (document.body.getAttribute('data-dashboard') || 'x');\n"
         "  var saved = localStorage.getItem(KEY);\n"
         "  if (saved && [].some.call(sel.options, function(o) { return o.value === saved; })) {\n"
@@ -605,12 +644,12 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
         "})();\n</script>"
     )
 
-    # --- 6. RATE REALITY CHECK ENGINE ---
-    # Premise: comparing today's best market rate against the historical *minimum*
-    # (the best deal that was actually available) is what consumers actually want
-    # to know. A rate at the 30th percentile of last year still might be 20%+
-    # worse than what was available 6 months ago — and that's the truth a
-    # consumer needs to make a switching decision.
+    # --- 6. RATE REALITY CHECK ENGINE (supplier-focused) ---
+    # The user can't change their delivery utility — but they CAN change their
+    # supplier, and that's where the savings come from. This section names the
+    # specific supplier offering today's best deal for each utility, and
+    # compares that against the best supplier offer that was actually
+    # available in the selected lookback window.
     today_dt = today_df['Date'].max()
 
     timeframes = {
@@ -620,74 +659,175 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
         '5y': 365*5
     }
 
-    pulse_data = {}
-    util_today = today_df.groupby('Utility')['rate'].min().to_dict()
-
     rate_fmt = (lambda r: f"{r*100:.2f}¢/kWh") if elecHtml else (lambda r: f"${r:.2f}/MCF")
 
-    for timeframe_id, days in timeframes.items():
-        cutoff = today_dt - pd.Timedelta(days=days)
-        hist_tf = filtered_df[filtered_df['Date'] >= cutoff]
+    # Exclude utility-default (PTC/SCO) rows — Rate Reality Check is about
+    # switching to a competitive supplier, not staying on the default.
+    market_df = filtered_df[filtered_df['Supplier'] != 'Utility'].copy()
+    today_market = today_df[today_df['Supplier'] != 'Utility'].copy()
 
-        for util, today_min in util_today.items():
-            if util not in pulse_data: pulse_data[util] = {}
+    # Term buckets — exact-match contract lengths consumers actually see offered.
+    # Each term carries a different value tradeoff:
+    #   6 mo  → flexibility: easy to re-shop in half a year if rates fall
+    #   12 mo → balance:     the default term most consumers compare against
+    #   24 mo → commitment:  locks in rate for 2 years — high reward at a low,
+    #                        big regret at a premium
+    TERM_OPTIONS = [6, 12, 24]
+    TERM_VALUE_CTA = {
+        6:  "Short 6-month term: you can re-shop in 6 months if rates drop.",
+        12: "Standard 12-month term: the default benchmark — balances flexibility with rate stability.",
+        24: "Long 24-month term: locks in this rate for 2 full years — fantastic when locked at a low, regrettable when locked at a premium.",
+    }
 
-            hist_util = hist_tf[hist_tf['Utility'] == util]['rate']
-            if len(hist_util) < 30:
+    pulse_data = {}
+
+    if not today_market.empty:
+        for util in sorted(today_market['Utility'].dropna().unique()):
+            u_today_all = today_market[today_market['Utility'] == util]
+            if u_today_all.empty:
                 continue
 
-            hist_low = float(hist_util.min())
-            hist_median = float(hist_util.median())
-            # premium = how much more today costs vs the historical low
-            premium_pct = (today_min / hist_low - 1) * 100 if hist_low > 0 else 0
+            by_term = {}
 
-            window_label = {'6mo': '6 months', '1y': 'year', '3y': '3 years', '5y': '5 years'}[timeframe_id]
+            for term in TERM_OPTIONS:
+                u_today = u_today_all[u_today_all['Term. Length'] == term]
+                if u_today.empty:
+                    continue
 
-            if premium_pct < 5:
-                status, color, icon = f"Near {window_label} low", "#16a34a", "🟢"
-                advice = f"Today's best rate is within 5% of the lowest available in the past {window_label}. Strong moment to lock in a longer term."
-            elif premium_pct < 15:
-                status, color, icon = "Slight premium", "#65a30d", "🟢"
-                advice = f"Reasonable rate, but {premium_pct:.0f}% above the best deal seen in the past {window_label}. Worth locking in if your contract is expiring."
-            elif premium_pct < 30:
-                status, color, icon = "Notable premium", "#d97706", "🟡"
-                advice = f"You'd pay {premium_pct:.0f}% more than the best rate seen in the past {window_label} ({rate_fmt(hist_low)}). If your contract isn't expiring soon, wait."
-            else:
-                status, color, icon = "Poor timing", "#b91c1c", "🔴"
-                advice = f"Today's best is {premium_pct:.0f}% above the {window_label} low of {rate_fmt(hist_low)}. Switching now locks in elevated pricing — wait if your current contract allows."
+                best_idx = u_today['rate'].idxmin()
+                best_today = u_today.loc[best_idx]
+                today_supplier = _clean_supplier_name(best_today['Supplier'])
+                today_rate = float(best_today['rate'])
 
-            pulse_data[util][timeframe_id] = {
-                'today_rate': rate_fmt(today_min),
-                'hist_low': rate_fmt(hist_low),
-                'hist_median': rate_fmt(hist_median),
-                'premium_pct': round(premium_pct),
-                'status': status,
-                'color': color,
-                'icon': icon,
-                'advice': advice
-            }
+                term_entry = {
+                    'today_supplier': today_supplier,
+                    'today_rate': rate_fmt(today_rate),
+                    'today_rate_raw': today_rate,
+                    'today_term': term,
+                    'windows': {}
+                }
+
+                for timeframe_id, days in timeframes.items():
+                    cutoff = today_dt - pd.Timedelta(days=days)
+                    hist_u = market_df[(market_df['Utility'] == util)
+                                       & (market_df['Term. Length'] == term)
+                                       & (market_df['Date'] >= cutoff)]
+                    if len(hist_u) < 20:
+                        continue
+
+                    hist_low_idx = hist_u['rate'].idxmin()
+                    hist_low_row = hist_u.loc[hist_low_idx]
+                    hist_low_rate = float(hist_low_row['rate'])
+                    hist_low_supplier = _clean_supplier_name(hist_low_row['Supplier'])
+                    hist_low_date = hist_low_row['Date'].strftime('%b %Y')
+
+                    premium_pct = (today_rate / hist_low_rate - 1) * 100 if hist_low_rate > 0 else 0
+                    window_label = {'6mo': '6 months', '1y': 'year', '3y': '3 years', '5y': '5 years'}[timeframe_id]
+
+                    # Status/color tier driven by premium
+                    if premium_pct < 5:
+                        status, color, icon = f"Near {window_label} low", "#16a34a", "🟢"
+                        tier = "near_low"
+                    elif premium_pct < 15:
+                        status, color, icon = "Reasonable to switch", "#65a30d", "🟢"
+                        tier = "reasonable"
+                    elif premium_pct < 30:
+                        status, color, icon = "Switching premium", "#d97706", "🟡"
+                        tier = "premium"
+                    else:
+                        status, color, icon = "Bad time to switch", "#b91c1c", "🔴"
+                        tier = "bad"
+
+                    # CTA varies by both tier AND term — locking 24mo at a low is meaningfully different than 6mo
+                    if tier == "near_low":
+                        if term == 24:
+                            cta = (f"Switching to {today_supplier} now locks this {window_label}-low rate "
+                                   f"({rate_fmt(today_rate)}) in for a full 2 years. This is the kind of moment "
+                                   f"a long-term contract pays off — you're insulated from the next price spike.")
+                        elif term == 12:
+                            cta = (f"Switching to {today_supplier} at {rate_fmt(today_rate)} locks today's near-low "
+                                   f"rate for a year. Strong move.")
+                        else:
+                            cta = (f"Switching to {today_supplier} at {rate_fmt(today_rate)} captures today's "
+                                   f"near-low rate, but only for 6 months. Consider 12 or 24 mo if you want to "
+                                   f"keep the rate longer.")
+                    elif tier == "reasonable":
+                        if term == 24:
+                            cta = (f"Switching to {today_supplier} works, but you're paying {premium_pct:.0f}% above "
+                                   f"the past-{window_label} low ({hist_low_supplier}, {rate_fmt(hist_low_rate)} in "
+                                   f"{hist_low_date}). Locking 2 years at a slight premium is a coin-flip — fine if "
+                                   f"you want stability.")
+                        else:
+                            cta = (f"Switching to {today_supplier} at {rate_fmt(today_rate)} is decent, "
+                                   f"{premium_pct:.0f}% above the {window_label} low ({hist_low_supplier} at "
+                                   f"{rate_fmt(hist_low_rate)} in {hist_low_date}).")
+                    elif tier == "premium":
+                        if term == 24:
+                            cta = (f"⚠️ Don't lock 24 months here. You'd pay {premium_pct:.0f}% above the recent low "
+                                   f"({hist_low_supplier} at {rate_fmt(hist_low_rate)} in {hist_low_date}) — for "
+                                   f"2 full years. If you must switch, take the 6-month so you can re-shop sooner.")
+                        elif term == 12:
+                            cta = (f"Switching pays {premium_pct:.0f}% above the {window_label} low "
+                                   f"({hist_low_supplier} at {rate_fmt(hist_low_rate)} in {hist_low_date}). "
+                                   f"Consider the 6-month term to stay flexible.")
+                        else:
+                            cta = (f"Switching to {today_supplier} pays {premium_pct:.0f}% above the {window_label} "
+                                   f"low. 6-month limits your downside if rates fall further.")
+                    else:  # bad
+                        if term == 24:
+                            cta = (f"🚫 Avoid a 24-month lock here. You'd be {premium_pct:.0f}% above the "
+                                   f"{window_label} low ({hist_low_supplier} at {rate_fmt(hist_low_rate)} in "
+                                   f"{hist_low_date}) — for two years. If your current plan still has time, wait.")
+                        elif term == 12:
+                            cta = (f"Switching now locks in {premium_pct:.0f}% above the {window_label} low for "
+                                   f"a year. Strongly consider waiting or taking only a 6-month term.")
+                        else:
+                            cta = (f"Even on a 6-month term, you'd pay {premium_pct:.0f}% above the recent low. "
+                                   f"Wait if your current plan allows.")
+
+                    term_entry['windows'][timeframe_id] = {
+                        'hist_low_supplier': hist_low_supplier,
+                        'hist_low_rate': rate_fmt(hist_low_rate),
+                        'hist_low_date': hist_low_date,
+                        'premium_pct': round(premium_pct),
+                        'status': status,
+                        'color': color,
+                        'icon': icon,
+                        'cta': cta,
+                    }
+
+                if term_entry['windows']:
+                    by_term[str(term)] = term_entry
+
+            if by_term:
+                pulse_data[util] = {
+                    'by_term': by_term,
+                    'term_value_advice': {str(t): TERM_VALUE_CTA[t] for t in TERM_OPTIONS},
+                }
 
     pulse_data_json = json.dumps(pulse_data)
 
     market_pulse_html = f"""
         <section class="card" style="padding: 0; overflow: hidden;">
-            <div style="background: #f1f5f9; padding: 12px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-                <h2 style="margin: 0; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);">Rate Reality Check: How does today's best deal stack up?</h2>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <span style="font-size: 0.7em; font-weight: 700; color: var(--muted);">COMPARE AGAINST:</span>
-                    <select id="pulse-timeline" style="padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border); font-size: 0.75em; font-weight: 700; color: var(--text);">
-                        <option value="6mo">Last 6 Months</option>
-                        <option value="1y" selected>Last 1 Year</option>
-                        <option value="3y">Last 3 Years</option>
-                        <option value="5y">Last 5 Years</option>
-                    </select>
+            <div style="background: #f1f5f9; padding: 16px 24px; border-bottom: 1px solid var(--border);">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px;">
+                    <h2 style="margin: 0; font-size: 1.1em; font-weight: 800; letter-spacing: -0.02em;">Rate Reality Check — Is it a good time to switch suppliers?</h2>
+                    <label style="display: flex; align-items: center; gap: 6px; font-size: 0.7em; font-weight: 700; color: var(--muted);">
+                        COMPARE AGAINST:
+                        <select id="pulse-timeline" style="padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border); font-size: 0.75em; font-weight: 700; color: var(--text);">
+                            <option value="6mo">Last 6 Months</option>
+                            <option value="1y" selected>Last 1 Year</option>
+                            <option value="3y">Last 3 Years</option>
+                            <option value="5y">Last 5 Years</option>
+                        </select>
+                    </label>
                 </div>
+                <p style="margin: 8px 0 0; font-size: 0.85em; color: var(--muted);">
+                    Your savings come from switching to a competitive <strong>supplier</strong> — not from your delivery utility. For each utility, we evaluate <strong>every contract length</strong> (6 / 12 / 24 mo) so you can see which term is the right pick right now. A 24-month lock at a low is a big win; the same lock at elevated pricing means overpaying for 2 years.
+                </p>
             </div>
-            <div id="market-pulse-grid" class="hero-stats" style="padding: 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; justify-content: stretch;">
+            <div id="market-pulse-grid" class="hero-stats" style="padding: 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 16px; justify-content: stretch;">
                 <!-- JavaScript will populate cards here -->
-            </div>
-            <div style="background: #f8fafc; padding: 8px 24px; border-top: 1px solid var(--border); font-size: 0.7em; color: var(--muted); text-align: center;">
-                Each card compares today's best market rate to the lowest rate actually available in the selected window. A "premium" means you'd pay that much more than the best deal recently seen.
             </div>
         </section>
     """ if pulse_data else ""
@@ -696,36 +836,169 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
 <script>
 (function() {{
     const PULSE_DATA = {pulse_data_json};
+    const TERM_ORDER = ['6', '12', '24'];
     const grid = document.getElementById('market-pulse-grid');
-    const select = document.getElementById('pulse-timeline');
-    
-    function renderPulse(timeframe) {{
+    const tlSelect = document.getElementById('pulse-timeline');
+
+    // Status tier rank (lower = better) — drives the "best pick" recommendation.
+    const TIER_RANK = {{
+      'Near 6 months low': 0, 'Near year low': 0, 'Near 3 years low': 0, 'Near 5 years low': 0,
+      'Reasonable to switch': 1,
+      'Switching premium': 2,
+      'Bad time to switch': 3
+    }};
+
+    function rankTier(status) {{
+      if (status && status.indexOf('Near ') === 0) return 0;
+      return TIER_RANK[status] != null ? TIER_RANK[status] : 4;
+    }}
+
+    function pickBestTerm(byTerm, tf) {{
+      // Score each term by (tier, then premium %). Tie-break prefers longer term
+      // when within 3% premium — a longer lock at the same effective deal is better.
+      const candidates = [];
+      TERM_ORDER.forEach(function(t) {{
+        const td = byTerm[t]; if (!td) return;
+        const w = td.windows && td.windows[tf]; if (!w) return;
+        candidates.push({{ term: t, tier: rankTier(w.status), premium: w.premium_pct, w: w, td: td }});
+      }});
+      if (!candidates.length) return null;
+      candidates.sort(function(a, b) {{
+        if (a.tier !== b.tier) return a.tier - b.tier;
+        if (Math.abs(a.premium - b.premium) < 3) return Number(b.term) - Number(a.term); // longer term wins on near-tie
+        return a.premium - b.premium;
+      }});
+      const best = candidates[0];
+      const allBad = candidates.every(function(c) {{ return c.tier >= 3; }});
+      const allPremiumOrWorse = candidates.every(function(c) {{ return c.tier >= 2; }});
+      // Within-3% premiums means terms are effectively tied — the recommendation
+      // is a tie-breaker, not a "this term is clearly better" call.
+      const tied = candidates.length > 1 && (Math.max.apply(null, candidates.map(c => c.premium)) - Math.min.apply(null, candidates.map(c => c.premium)) < 3);
+      return {{ best: best, candidates: candidates, allBad: allBad, allPremiumOrWorse: allPremiumOrWorse, tied: tied }};
+    }}
+
+    function buildRecommendationRationale(pick) {{
+      // Generate a rationale that REFLECTS the comparison across all terms,
+      // so we don't contradict ourselves by reusing one term's isolated CTA.
+      const b = pick.best;
+      const tier = b.tier;
+      const supplier = b.td.today_supplier;
+      const rate = b.td.today_rate;
+      const term = b.term;
+      const premium = b.premium;
+
+      if (tier === 0) {{
+        if (term === '24') {{
+          return `Lock today's near-low rate (${{rate}}) with ${{supplier}} for a full 2 years. This is exactly the moment a long-term contract pays off.`;
+        }} else if (term === '12') {{
+          return `Switch to ${{supplier}} at ${{rate}}. Today's rate is near the recent low — a strong 1-year lock.`;
+        }} else {{
+          return `Switch to ${{supplier}} at ${{rate}} for 6 months. Near recent lows, but you'd give up the long lock — consider 12 or 24 mo if those are also near low.`;
+        }}
+      }}
+
+      if (tier === 1) {{
+        if (term === '24') {{
+          return `${{supplier}} at ${{rate}} for 24 months. Slightly above the recent low (+${{premium}}%), but a long lock at a reasonable rate is fine for stability.`;
+        }}
+        return `${{supplier}} at ${{rate}} for ${{term}} months. ${{premium}}% above the recent low — a reasonable switch.`;
+      }}
+
+      if (tier === 2) {{
+        if (pick.tied) {{
+          return `All terms are at a similar premium (~${{premium}}%) above the recent low. If you must switch now, the ${{term}}-month with ${{supplier}} at ${{rate}} ties for the smallest premium AND locks in for the longest — best of a mediocre set. Waiting is also defensible.`;
+        }}
+        return `${{supplier}} at ${{rate}} for ${{term}} months is the least-bad option (+${{premium}}% above the recent low). Switching now means paying a premium — waiting is reasonable if your current plan allows.`;
+      }}
+
+      // tier 3 individual case (shouldn't usually hit here since allBad uses the other banner)
+      return `${{supplier}} at ${{rate}} for ${{term}} months is the smallest premium available, but still well above the recent low (+${{premium}}%). Strongly consider waiting.`;
+    }}
+
+    function renderTermRow(t, td, w, isBest) {{
+      const bg = isBest ? '#ecfdf5' : '#f8fafc';
+      const border = isBest ? '#10b981' : 'transparent';
+      const premiumLabel = w.premium_pct <= 0 ? 'At the low' : `+${{w.premium_pct}}% over low`;
+      const bestBadge = isBest ? '<span style="background:#10b981;color:white;font-size:0.6em;font-weight:800;padding:2px 6px;border-radius:4px;text-transform:uppercase;letter-spacing:0.05em;margin-left:6px;">Best pick</span>' : '';
+      return `
+        <div style="background:${{bg}}; border:1px solid ${{border}}; border-radius:8px; padding:10px 12px; margin-bottom:8px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:4px;">
+            <span style="font-weight:800; font-size:0.95em;">${{t}}-month ${{bestBadge}}</span>
+            <span style="font-size:0.75em; font-weight:800; color:${{w.color}}; white-space:nowrap;">${{w.icon}} ${{w.status}}</span>
+          </div>
+          <div style="font-size:0.82em; color:var(--text);">
+            <strong>${{td.today_supplier}}</strong> at <strong>${{td.today_rate}}</strong>
+            <span style="color:${{w.color}}; font-weight:700; margin-left:4px;">${{premiumLabel}}</span>
+          </div>
+          <div style="font-size:0.7em; color:var(--muted); margin-top:2px;">
+            Recent low: ${{w.hist_low_supplier}} at ${{w.hist_low_rate}} (${{w.hist_low_date}})
+          </div>
+        </div>
+      `;
+    }}
+
+    function renderPulse() {{
         if (!grid) return;
+        const tf = tlSelect ? tlSelect.value : '1y';
         let html = '';
-        for (const [util, tfData] of Object.entries(PULSE_DATA)) {{
-            const data = tfData[timeframe];
-            if (!data) continue;
-            
-            const premiumLabel = data.premium_pct <= 0 ? 'At the low' : `+${{data.premium_pct}}% above low`;
+
+        for (const [util, data] of Object.entries(PULSE_DATA)) {{
+            const byTerm = data.by_term;
+            if (!byTerm) continue;
+            const pick = pickBestTerm(byTerm, tf);
+            if (!pick) continue;
+
+            // Headline recommendation — generated to reflect the comparison
+            // across all terms, never reusing a single-term isolated CTA.
+            let headline;
+            if (pick.allBad) {{
+              headline = `
+                <div style="background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:10px 12px; margin-bottom:12px;">
+                  <div style="font-size:0.75em; font-weight:800; color:#b91c1c; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:2px;">🚫 Don't switch right now</div>
+                  <div style="font-size:0.82em; color:var(--text);">All available contract lengths are well above their recent lows. If your current plan still has time, wait.</div>
+                </div>
+              `;
+            }} else {{
+              const b = pick.best;
+              const rationale = buildRecommendationRationale(pick);
+              // Use neutral styling when the recommendation is a "least-bad" tie-break
+              const isHighConfidence = b.tier <= 1;
+              const bg = isHighConfidence ? '#ecfdf5' : '#fffbeb';
+              const border = isHighConfidence ? '#10b981' : '#f59e0b';
+              const titleColor = isHighConfidence ? '#047857' : '#92400e';
+              const icon = isHighConfidence ? '✅' : '⚖️';
+              const verb = isHighConfidence ? 'Recommended' : 'Best of available';
+              headline = `
+                <div style="background:${{bg}}; border:1px solid ${{border}}; border-radius:8px; padding:10px 12px; margin-bottom:12px;">
+                  <div style="font-size:0.75em; font-weight:800; color:${{titleColor}}; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:2px;">${{icon}} ${{verb}}: ${{b.term}}-month with ${{b.td.today_supplier}}</div>
+                  <div style="font-size:0.82em; color:var(--text);">${{rationale}}</div>
+                </div>
+              `;
+            }}
+
+            // All three term rows
+            let rows = '';
+            TERM_ORDER.forEach(function(t) {{
+              const td = byTerm[t]; if (!td) return;
+              const w = td.windows && td.windows[tf]; if (!w) return;
+              const isBest = !pick.allBad && pick.best.term === t;
+              rows += renderTermRow(t, td, w, isBest);
+            }});
+
             html += `
-                <div class="stat-card" style="border-left: 4px solid ${{data.color}}; text-align: left;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <span class="stat-label">${{util}}</span>
-                        <span style="font-size: 0.8em; font-weight: 800; color: ${{data.color}};">${{data.icon}} ${{data.status}}</span>
-                    </div>
-                    <div style="font-size: 1.15em; font-weight: 800; margin-bottom: 2px;">${{data.today_rate}} <span style="font-size: 0.7em; font-weight: 700; color: ${{data.color}};">(${{premiumLabel}})</span></div>
-                    <div style="font-size: 0.7em; color: var(--muted); margin-bottom: 8px;">Window low: ${{data.hist_low}} · median: ${{data.hist_median}}</div>
-                    <div style="font-size: 0.75em; color: var(--text); line-height: 1.4;">${{data.advice}}</div>
+                <div class="stat-card" data-utility="${{util}}" style="text-align:left; padding:16px;">
+                    <div style="font-size:0.75em; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:10px;">If you're on ${{util}}</div>
+                    ${{headline}}
+                    <div style="font-size:0.68em; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; margin:8px 0 6px;">All contract lengths</div>
+                    ${{rows}}
                 </div>
             `;
         }}
-        grid.innerHTML = html || '<p style="grid-column: 1/-1; text-align: center; color: var(--muted); font-size: 0.9em; padding: 20px;">Insufficient historical data for this timeline.</p>';
+        grid.innerHTML = html || '<p style="grid-column: 1/-1; text-align: center; color: var(--muted); font-size: 0.9em; padding: 20px;">Insufficient historical data for this comparison window.</p>';
     }}
-    
-    if (select) {{
-        select.addEventListener('change', (e) => renderPulse(e.target.value));
-        renderPulse('1y');
-    }}
+
+    if (tlSelect) tlSelect.addEventListener('change', renderPulse);
+    renderPulse();
 }})();
 </script>
 """
@@ -824,6 +1097,87 @@ body {
 .tab:hover { background: var(--bg); color: var(--text); }
 .tab-active { background: var(--text); color: white; }
 
+.selection-section {
+  background: white; border-bottom: 1px solid var(--border);
+  margin-top: -40px; margin-bottom: 24px;
+  position: relative; z-index: 5;
+}
+.selection-inner {
+  max-width: 1100px; margin: 0 auto; padding: 28px 24px;
+}
+.selection-header h2 {
+  margin: 0 0 8px 0; font-size: 1.5em; font-weight: 800; letter-spacing: -0.02em;
+}
+.selection-explainer {
+  margin: 0 0 24px 0; color: var(--muted); font-size: 0.9em; line-height: 1.55;
+  max-width: 780px;
+}
+.selection-explainer strong { color: var(--text); font-weight: 700; }
+.selection-block {
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 14px; padding: 20px 22px;
+  box-shadow: var(--shadow-sm);
+}
+.selection-field-row {
+  display: flex; flex-direction: column; gap: 8px;
+  margin-bottom: 16px;
+}
+.selection-field-row:last-of-type { margin-bottom: 0; }
+.selection-label {
+  font-size: 0.7em; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--muted); font-weight: 700;
+}
+.selection-field-state select {
+  padding: 8px 12px; border: 1.5px solid var(--border);
+  border-radius: 8px; font-size: 0.95em; font-weight: 600;
+  background: white; color: var(--text); cursor: pointer;
+  min-width: 180px; max-width: 220px;
+}
+.utility-buttons {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px; margin-top: 4px;
+}
+.util-btn {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; padding: 14px 16px; background: white;
+  border: 1.5px solid var(--border); border-radius: 10px;
+  cursor: pointer; font-family: inherit; font-size: 0.95em;
+  font-weight: 600; color: var(--text); text-align: left;
+  transition: all 0.15s; width: 100%;
+}
+.util-btn:hover {
+  border-color: var(--primary); background: #eff6ff;
+  transform: translateY(-1px); box-shadow: var(--shadow-sm);
+}
+.util-btn.util-btn-active {
+  border-color: var(--primary); background: #1e40af;
+  color: white;
+}
+.util-btn.util-btn-active .util-btn-check { color: white; }
+.util-btn-check {
+  font-size: 1.1em; color: var(--primary); opacity: 0;
+}
+.util-btn.util-btn-active .util-btn-check { opacity: 1; }
+.util-btn-all {
+  background: #f1f5f9; border-style: dashed;
+  grid-column: 1 / -1;
+}
+.util-btn-all:hover { border-style: solid; }
+.selection-hint {
+  margin: 16px 0 0 0; color: var(--muted); font-size: 0.85em;
+  font-style: italic;
+}
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px;
+  overflow: hidden; clip: rect(0,0,0,0);
+}
+@media (max-width: 640px) {
+  .selection-section { margin-top: -24px; }
+  .selection-inner { padding: 20px 16px; }
+  .selection-header h2 { font-size: 1.25em; }
+  .utility-buttons { grid-template-columns: 1fr; }
+}
+
 .hero {
   background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
   color: white; padding: 60px 24px; text-align: center;
@@ -855,10 +1209,15 @@ body {
   margin-bottom: 24px; box-shadow: var(--shadow-sm);
 }
 .section-title {
-  margin: 40px 0 16px;
-  font-size: 0.85em; font-weight: 700;
-  text-transform: uppercase; letter-spacing: 0.1em;
-  color: var(--muted);
+  margin: 40px 0 8px;
+  font-size: 1.4em; font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+.section-subtitle {
+  margin: 0 0 20px;
+  color: var(--muted); font-size: 0.9em;
+  max-width: 780px; line-height: 1.5;
 }
 .leaderboard-cards {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
@@ -1213,14 +1572,44 @@ body {
     </script>
     <nav class="topnav">
     <div class="topnav-inner">
-    <span class="brand">Ohio Energy Tracker</span>
+    <span class="brand"><a href="index.html" style="color:inherit;text-decoration:none;">Ohio Energy Tracker</a></span>
     <div class="tabs">
-    <a href="electric_dashboard.html" class="tab {elec_active}">Electric</a>
-    <a href="gas_dashboard.html" class="tab {gas_active}">Gas</a>
+    <a href="electric_dashboard.html" class="tab {elec_active}" data-tab="electric">Electric</a>
+    <a href="gas_dashboard.html" class="tab {gas_active}" data-tab="gas">Gas</a>
     </div>
     </div>
     </nav>
     {hero_section}
+    <section class="selection-section" id="selection-bar">
+      <div class="selection-inner">
+        <div class="selection-header">
+          <h2>Who delivers your {dash_type}?</h2>
+          <p class="selection-explainer">
+            Your <strong>utility company</strong> (also called the <strong>delivery company</strong>) is who runs the
+            wires or pipes down your street and reads your meter — they're responsible for the lines, outages, and getting
+            power to your home. <strong>They don't have to generate the power</strong>: Ohio lets you pick a different
+            supplier for the actual energy, which is where you can save money. Pick yours below to see rates tailored to your area.
+          </p>
+        </div>
+
+        <div class="selection-block">
+          <div class="selection-field-row">
+            <label class="selection-field selection-field-state">
+              <span class="selection-label">State</span>
+              <select id="state-select">
+                <option value="OH">Ohio</option>
+              </select>
+            </label>
+          </div>
+          <div class="selection-field-row">
+            <span class="selection-label">Your utility / delivery company</span>
+            <div class="utility-buttons" id="utility-buttons"></div>
+            <select id="utility-select" data-fuel="{dash_type}" class="visually-hidden"></select>
+          </div>
+          <p class="selection-hint" id="selection-hint"></p>
+        </div>
+      </div>
+    </section>
     <main class="container">
     <p style="margin-top: -24px; margin-bottom: 32px; font-size: 0.85em; font-style: italic; color: #94a3b8; text-align: center;">
     * This is a free open-source project. Rates are automated and may contain errors. Always verify data on official provider websites.
@@ -1228,11 +1617,12 @@ body {
     {top_rates_section_html}
     {market_pulse_html}
     {calculator_html}
-    <h2 class="section-title">Market Leaderboard</h2>
+    <h2 class="section-title">Available Plans by Delivery Utility</h2>
+    <p class="section-subtitle">Every supplier currently offering plans through each Ohio delivery utility, sorted by contract length. The lowest rate per term is highlighted.</p>
     <div class="leaderboard-cards">
     {"".join(table_sections)}
     </div>
-    <details class="chart-section" open>
+    <details class="chart-section">
     <summary>Market Dynamics</summary>
     <div class="chart-body">
     <div class="chart-controls">
@@ -1264,6 +1654,149 @@ body {
     {chart_switcher_js}
     {weather_js}
     {pulse_js}
+    <script>
+    (function() {{
+      var STORAGE_KEY = 'oet_selection_v1';
+      var FUEL = document.body.getAttribute('data-dashboard') || 'electric';
+
+      var UTILITIES = {{
+        electric: [
+          {{ value: 'AEP', label: 'AEP Ohio' }},
+          {{ value: 'AES Power', label: 'AES Ohio (formerly DP&L)' }},
+          {{ value: 'Duke', label: 'Duke Energy' }},
+          {{ value: 'Ohio Edison', label: 'Ohio Edison' }},
+          {{ value: 'Ilumminating Co', label: 'The Illuminating Co' }},
+          {{ value: 'Toledo Edison', label: 'Toledo Edison' }}
+        ],
+        gas: [
+          {{ value: 'Enbridge-Dominion', label: 'Enbridge (Dominion East Ohio)' }},
+          {{ value: 'Columbia', label: 'Columbia Gas of Ohio' }},
+          {{ value: 'Duke', label: 'Duke Energy' }},
+          {{ value: 'Centerpoint', label: 'CenterPoint Energy' }}
+        ]
+      }};
+
+      function loadSelection() {{
+        try {{ return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{{}}'); }}
+        catch (e) {{ return {{}}; }}
+      }}
+      function saveSelection(sel) {{
+        try {{ localStorage.setItem(STORAGE_KEY, JSON.stringify(sel)); }} catch (e) {{}}
+      }}
+
+      // Populate utility buttons + hidden select for this fuel
+      var utilSel = document.getElementById('utility-select');
+      var utilButtons = document.getElementById('utility-buttons');
+      var stateSel = document.getElementById('state-select');
+      var hint = document.getElementById('selection-hint');
+
+      var opts = '<option value="">— Pick yours —</option>';
+      var btnHtml = '';
+      UTILITIES[FUEL].forEach(function(u) {{
+        opts += '<option value="' + u.value + '">' + u.label + '</option>';
+        btnHtml += '<button type="button" class="util-btn" data-value="' + u.value + '">' +
+                     '<span>' + u.label + '</span>' +
+                     '<span class="util-btn-check">✓</span>' +
+                   '</button>';
+      }});
+      opts += '<option value="all">Compare all ' + FUEL + ' options in Ohio</option>';
+      btnHtml += '<button type="button" class="util-btn util-btn-all" data-value="all">' +
+                   '<span>Compare all ' + FUEL + ' options in Ohio</span>' +
+                   '<span class="util-btn-check">✓</span>' +
+                 '</button>';
+      utilSel.innerHTML = opts;
+      utilButtons.innerHTML = btnHtml;
+
+      // Load saved selection
+      var saved = loadSelection();
+      if (saved.state) stateSel.value = saved.state;
+      var savedUtil = (saved.utilities && saved.utilities[FUEL]) || '';
+      if (savedUtil) utilSel.value = savedUtil;
+
+      function updateActiveButton(value) {{
+        utilButtons.querySelectorAll('.util-btn').forEach(function(b) {{
+          b.classList.toggle('util-btn-active', b.dataset.value === value);
+        }});
+      }}
+      updateActiveButton(utilSel.value);
+
+      function applyFilter(utility) {{
+        // Reset: show everything
+        document.querySelectorAll('[data-utility]').forEach(function(el) {{
+          el.style.display = '';
+        }});
+
+        if (!utility) {{
+          hint.textContent = '';
+          return;
+        }}
+        if (utility === 'all') {{
+          hint.textContent = 'Showing all utilities';
+          return;
+        }}
+
+        // Hide non-matching elements
+        document.querySelectorAll('[data-utility]').forEach(function(el) {{
+          if (el.dataset.utility !== utility) {{
+            el.style.display = 'none';
+          }}
+        }});
+        hint.textContent = 'Filtered to your utility';
+
+        // Pre-select calculator utility dropdown
+        var calcSel = document.getElementById('calc-utility');
+        if (calcSel) {{
+          for (var i = 0; i < calcSel.options.length; i++) {{
+            if (calcSel.options[i].value === utility) {{
+              calcSel.value = utility;
+              calcSel.dispatchEvent(new Event('change'));
+              break;
+            }}
+          }}
+        }}
+      }}
+
+      applyFilter(utilSel.value);
+
+      // Async-rendered sections (pulse cards, top-rates rows) need re-filter after they mount
+      function filterDynamic() {{
+        var u = utilSel.value;
+        if (!u || u === 'all') return;
+        document.querySelectorAll('[data-utility]').forEach(function(el) {{
+          if (el.dataset.utility !== u) el.style.display = 'none';
+        }});
+      }}
+      ['market-pulse-grid'].forEach(function(id) {{
+        var node = document.getElementById(id);
+        if (node) new MutationObserver(filterDynamic).observe(node, {{ childList: true }});
+      }});
+
+      // Save + apply on change
+      utilSel.addEventListener('change', function() {{
+        var sel = loadSelection();
+        sel.state = stateSel.value || 'OH';
+        sel.utilities = sel.utilities || {{}};
+        sel.utilities[FUEL] = utilSel.value;
+        saveSelection(sel);
+        applyFilter(utilSel.value);
+        updateActiveButton(utilSel.value);
+        // Top Rates table re-renders from the per-utility bucket
+        if (typeof window.__renderTopRates === 'function') window.__renderTopRates();
+      }});
+
+      utilButtons.addEventListener('click', function(e) {{
+        var btn = e.target.closest('.util-btn');
+        if (!btn) return;
+        utilSel.value = btn.dataset.value;
+        utilSel.dispatchEvent(new Event('change'));
+      }});
+      stateSel.addEventListener('change', function() {{
+        var sel = loadSelection();
+        sel.state = stateSel.value;
+        saveSelection(sel);
+      }});
+    }})();
+    </script>
     </body>
     </html>
     """
