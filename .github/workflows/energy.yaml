@@ -1,4 +1,4 @@
-name: Ohio Energy Tracker
+name: RateSavvy Data Pipeline
 
 on:
   workflow_dispatch: # Allows manual triggering

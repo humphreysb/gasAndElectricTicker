@@ -1428,6 +1428,15 @@ body {
     gas_active = 'tab-active' if not elecHtml else ''
     dash_type = 'electric' if elecHtml else 'gas'
 
+    # Build the state dropdown from STATE_CONFIG, marking the current state
+    # selected and embedding each state's electric/gas filename as data
+    # attributes so the client-side JS can navigate on change.
+    state_options = "\n".join(
+        f'<option value="{code}" data-elec="{cfg["elec_file"]}" data-gas="{cfg["gas_file"]}"'
+        f'{" selected" if code == state else ""}>{cfg["name"]}</option>'
+        for code, cfg in STATE_CONFIG.items()
+    )
+
     weather_js = (
         "<script>\n(function() {\n"
         "  var LAT = 39.96, LON = -82.99;\n"  # Columbus, Ohio
@@ -1598,7 +1607,7 @@ body {
             <label class="selection-field selection-field-state">
               <span class="selection-label">State</span>
               <select id="state-select">
-                <option value="OH">Ohio</option>
+                {state_options}
               </select>
             </label>
           </div>
@@ -1795,6 +1804,15 @@ body {
         var sel = loadSelection();
         sel.state = stateSel.value;
         saveSelection(sel);
+        // If this state has a different dashboard file for the current fuel,
+        // navigate to it. (Once we have more than one state in STATE_CONFIG,
+        // each option carries data-elec / data-gas attributes pointing at
+        // that state's electric/gas dashboards.)
+        var opt = stateSel.options[stateSel.selectedIndex];
+        var target = FUEL === 'gas' ? opt.getAttribute('data-gas') : opt.getAttribute('data-elec');
+        if (target && target !== window.location.pathname.split('/').pop()) {{
+          window.location.href = target;
+        }}
       }});
     }})();
     </script>
@@ -1804,20 +1822,57 @@ body {
     with open(html_file_name, 'w', encoding='utf-8') as f:
         f.write(full_html)
 # --- EXECUTION ---
+# Iterates over every state present in the parquet and emits its electric
+# + gas dashboards. Ohio keeps the legacy filenames (electric_dashboard.html /
+# gas_dashboard.html) so existing URLs and the GitHub Pages config don't
+# break; additional states get prefixed filenames (e.g. pa-electric_dashboard.html).
 data_file = 'allData.parquet'
-generate_energy_dashboard(
-    file_path=data_file,
-    html_file_name='electric_dashboard.html',
-    elecHtml=True,
-    top_link_url="gas_dashboard.html",
-    top_link_text="Switch to Gas Dashboard",
-    threshold_rate=0.0869
-)
-generate_energy_dashboard(
-    file_path=data_file,
-    html_file_name='gas_dashboard.html',
-    elecHtml=False,
-    top_link_url="electric_dashboard.html",
-    top_link_text="Switch to Electric Dashboard",
-    threshold_rate=2.99
-)
+
+# Per-state filename + threshold config. As we onboard more states, add an
+# entry here. Filenames intentionally collide with the legacy URLs for OH.
+STATE_CONFIG = {
+    'OH': {
+        'name': 'Ohio',
+        'elec_file': 'electric_dashboard.html',
+        'gas_file': 'gas_dashboard.html',
+        'elec_threshold': 0.0869,
+        'gas_threshold': 2.99,
+    },
+    # 'PA': {
+    #     'name': 'Pennsylvania',
+    #     'elec_file': 'pa-electric_dashboard.html',
+    #     'gas_file':  'pa-gas_dashboard.html',
+    #     'elec_threshold': 0.09,
+    #     'gas_threshold':  3.00,
+    # },
+}
+
+
+def _states_in_data(path):
+    """Return the list of state codes that actually have rows in the parquet."""
+    df = pd.read_parquet(path)
+    if 'state' not in df.columns:
+        return ['OH']
+    return sorted(s for s in df['state'].dropna().unique() if s in STATE_CONFIG)
+
+
+for _state in _states_in_data(data_file):
+    cfg = STATE_CONFIG[_state]
+    generate_energy_dashboard(
+        file_path=data_file,
+        html_file_name=cfg['elec_file'],
+        elecHtml=True,
+        top_link_url=cfg['gas_file'],
+        top_link_text='Switch to Gas Dashboard',
+        threshold_rate=cfg['elec_threshold'],
+        state=_state,
+    )
+    generate_energy_dashboard(
+        file_path=data_file,
+        html_file_name=cfg['gas_file'],
+        elecHtml=False,
+        top_link_url=cfg['elec_file'],
+        top_link_text='Switch to Electric Dashboard',
+        threshold_rate=cfg['gas_threshold'],
+        state=_state,
+    )

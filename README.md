@@ -5,8 +5,8 @@
 An autonomous data pipeline and interactive dashboard for tracking retail natural gas and electricity rates. RateSavvy scrapes deregulated-market data daily to surface the most competitive, consumer-friendly supplier plans. Currently covering Ohio (via the **Energy Choice Ohio** "Apples to Apples" marketplace), with additional states planned.
 
 ### 📊 Live Dashboards
-*   **[Electric Dashboard](https://humphreysb.github.io/gasAndElectricTicker/electric_dashboard.html)**
-*   **[Gas Dashboard](https://humphreysb.github.io/gasAndElectricTicker/gas_dashboard.html)**
+*   **[Electric Dashboard](https://ratesavvy.us/electric_dashboard.html)**
+*   **[Gas Dashboard](https://ratesavvy.us/gas_dashboard.html)**
 
 ---
 
