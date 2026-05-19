@@ -94,6 +94,12 @@
         </div>
     </nav>
 
+    <div id="welcome-back" style="display:none; background:#1e40af; color:white; padding:12px 16px; text-align:center; font-size:0.9em;">
+        <span id="welcome-back-text"></span>
+        <a id="welcome-back-link" href="#" style="color:white; font-weight:700; text-decoration:underline; margin-left:8px;">Go to dashboard →</a>
+        <button id="welcome-back-clear" style="margin-left:12px; background:transparent; border:1px solid rgba(255,255,255,0.4); color:white; padding:3px 10px; border-radius:4px; font-size:0.8em; cursor:pointer;">Start fresh</button>
+    </div>
+
     <header class="hero">
         <div class="hero-content">
             <h1>Don't overpay for energy.</h1>
@@ -166,12 +172,58 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                const swPath = window.location.pathname.includes('gasAndElectricTicker') 
-                    ? '/gasAndElectricTicker/sw.js' 
+                const swPath = window.location.pathname.includes('gasAndElectricTicker')
+                    ? '/gasAndElectricTicker/sw.js'
                     : './sw.js';
                 navigator.serviceWorker.register(swPath);
             });
         }
+
+        // Welcome-back banner: if the user previously picked a state + utility,
+        // surface a one-click jump to their dashboard. Per-state dashboard file
+        // naming convention matches build_dashboard.py's STATE_CONFIG: Ohio uses
+        // the legacy electric_dashboard.html / gas_dashboard.html for backward
+        // compatibility, other states use <code>-electric_dashboard.html etc.
+        (function() {
+            // State display names — keep in sync with build_dashboard.py STATE_CONFIG.
+            var STATE_NAMES = { 'OH': 'Ohio', 'PA': 'Pennsylvania' };
+
+            function dashboardFile(state, fuel) {
+                if (state === 'OH') {
+                    return fuel === 'gas' ? 'gas_dashboard.html' : 'electric_dashboard.html';
+                }
+                var slug = state.toLowerCase();
+                return slug + '-' + (fuel === 'gas' ? 'gas' : 'electric') + '_dashboard.html';
+            }
+
+            var saved;
+            try { saved = JSON.parse(localStorage.getItem('oet_selection_v1') || 'null'); }
+            catch (e) { saved = null; }
+            if (!saved || !saved.state) return;
+
+            // Prefer electric if both are saved, otherwise whichever fuel is set.
+            var utilities = saved.utilities || {};
+            var fuel = utilities.electric ? 'electric' : (utilities.gas ? 'gas' : null);
+            if (!fuel) return;
+
+            var banner = document.getElementById('welcome-back');
+            var text   = document.getElementById('welcome-back-text');
+            var link   = document.getElementById('welcome-back-link');
+            var clearBtn = document.getElementById('welcome-back-clear');
+
+            var stateName = STATE_NAMES[saved.state] || saved.state;
+            var utilLabel = utilities[fuel] === 'all' ? 'all utilities' : utilities[fuel];
+            text.textContent = 'Welcome back — pick up where you left off (' +
+                stateName + ' · ' + fuel + ' · ' + utilLabel + ')';
+            link.textContent = 'Open my dashboard →';
+            link.href = dashboardFile(saved.state, fuel);
+            banner.style.display = 'block';
+
+            clearBtn.addEventListener('click', function() {
+                try { localStorage.removeItem('oet_selection_v1'); } catch (e) {}
+                banner.style.display = 'none';
+            });
+        })();
     </script>
 </body>
 </html>

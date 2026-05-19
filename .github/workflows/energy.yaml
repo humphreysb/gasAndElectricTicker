@@ -27,8 +27,22 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      # Fast pre-flight: catches a misregistered scraper / missing providers
+      # entry / drifted column schema before we hit the live sites and
+      # potentially corrupt allData.parquet.
+      - name: Run interface + schema tests
+        run: python -m unittest discover tests -v
+
+      # The scraper is internally tolerant — a single state's failure is
+      # logged but doesn't abort the rest. We still want to fail the run
+      # if EVERY scraper fails (the dispatcher exits 1 in that case).
       - name: Run scraper
         run: python energy_scraper.py
+
+      # Re-run schema tests AFTER scraping so we catch any new state whose
+      # output drifts from the union schema before it goes live.
+      - name: Post-scrape schema verification
+        run: python -m unittest tests.test_data_schema -v
 
       - name: Build dashboard
         run: python build_dashboard.py
