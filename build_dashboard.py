@@ -471,7 +471,7 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
             badge_html = '<span class="badge-90d-low" title="Today\'s minimum matches the lowest rate in the last 90 days">90-DAY LOW</span>' if is_90d_low_by_util.get(util, False) else ''
             rate_pill = f'<span class="pill pill-rate">Min today: {current_min:.5f} {unit}</span>'
 
-            section = '<article class="util-card">'
+            section = f'<article class="util-card" data-utility="{util}">'
             section += f'<header class="util-card-head"><h3>{util}</h3>{rate_pill}{badge_html}</header>'
             section += f"<table><thead><tr><th>Supplier</th><th>BBB</th><th>Term</th><th>Rate ({unit})</th></tr></thead><tbody>"
 
@@ -500,6 +500,7 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
         table_sections = ['<p class="empty-state">No new data has been updated for today yet.</p>']
 
     # --- 6c. TOP 5 RATES SECTION DATA ---
+    TOP_N = 3
     if not today_df.empty:
         today_clean = today_df.copy()
         today_clean['SupplierClean'] = today_clean['Supplier'].apply(_clean_supplier_name)
@@ -509,9 +510,14 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
                        .sort_values('rate')
         )
         unique_terms = sorted({int(t) for t in today_dedup['Term. Length'].unique()})
+
+        # Build aggregate buckets (top N across all utilities) + per-utility buckets
         top_rates_buckets = {'all': []}
         for t in unique_terms:
             top_rates_buckets[str(t)] = []
+
+        by_util = {}  # { util: { 'all': [...], '12': [...] } }
+
         for _, row in today_dedup.iterrows():
             rating, url = _bbb_entry(row['SupplierClean'])
             entry = {
@@ -522,12 +528,24 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
                 'bbb': rating,
                 'bbb_url': url,
             }
-            if len(top_rates_buckets['all']) < 5:
-                top_rates_buckets['all'].append(entry)
             tkey = str(entry['term'])
-            if tkey in top_rates_buckets and len(top_rates_buckets[tkey]) < 5:
+
+            if len(top_rates_buckets['all']) < TOP_N:
+                top_rates_buckets['all'].append(entry)
+            if tkey in top_rates_buckets and len(top_rates_buckets[tkey]) < TOP_N:
                 top_rates_buckets[tkey].append(entry)
-        top_rates_payload = {'unit': unit, 'data': top_rates_buckets}
+
+            u = entry['utility']
+            if u not in by_util:
+                by_util[u] = {'all': []}
+                for t in unique_terms:
+                    by_util[u][str(t)] = []
+            if len(by_util[u]['all']) < TOP_N:
+                by_util[u]['all'].append(entry)
+            if tkey in by_util[u] and len(by_util[u][tkey]) < TOP_N:
+                by_util[u][tkey].append(entry)
+
+        top_rates_payload = {'unit': unit, 'data': top_rates_buckets, 'by_util': by_util, 'top_n': TOP_N}
         top_rates_term_options = '<option value="all">All terms</option>' + "".join(
             f'<option value="{t}">{t} months</option>' for t in unique_terms
         )
@@ -541,7 +559,7 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
     if top_rates_available:
         top_rates_section_html = f"""
         <section class="card top-rates-card">
-            <h2 class="section-title" style="margin-top:0">Top 5 Rates Right Now</h2>
+            <h2 class="section-title" style="margin-top:0" id="top-rates-heading">Top 3 Rates Right Now</h2>
             <div class="top-rates-controls">
                 <label>Filter by term
                     <select id="top-rates-term-select">{top_rates_term_options}</select>
@@ -574,9 +592,28 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
         "    }\n"
         "    return '<a class=\"bbb-pill bbb-unknown\" href=\"' + href + '\" target=\"_blank\" rel=\"noopener\" title=\"No rating cached — click to look up\">—</a>';\n"
         "  }\n"
+        "  function getSelectedUtility() {\n"
+        "    try {\n"
+        "      var saved = JSON.parse(localStorage.getItem('oet_selection_v1') || '{}');\n"
+        "      var fuel = document.body.getAttribute('data-dashboard') || 'electric';\n"
+        "      var u = saved.utilities && saved.utilities[fuel];\n"
+        "      return (u && u !== 'all') ? u : null;\n"
+        "    } catch (e) { return null; }\n"
+        "  }\n"
         "  function render() {\n"
         "    var term = sel.value;\n"
-        "    var rows = (PAYLOAD.data[term] || []);\n"
+        "    var util = getSelectedUtility();\n"
+        "    var rows;\n"
+        "    if (util && PAYLOAD.by_util && PAYLOAD.by_util[util]) {\n"
+        "      rows = PAYLOAD.by_util[util][term] || [];\n"
+        "    } else {\n"
+        "      rows = PAYLOAD.data[term] || [];\n"
+        "    }\n"
+        "    var heading = document.getElementById('top-rates-heading');\n"
+        "    if (heading) {\n"
+        "      var n = PAYLOAD.top_n || 3;\n"
+        "      heading.textContent = util ? ('Top ' + n + ' Rates for ' + util) : ('Top ' + n + ' Rates Right Now');\n"
+        "    }\n"
         "    if (rows.length === 0) {\n"
         "      tbody.innerHTML = '<tr><td colspan=\"6\" class=\"empty-cell\">No data for that term.</td></tr>';\n"
         "      return;\n"
@@ -592,6 +629,8 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
         "      '</tr>';\n"
         "    }).join('');\n"
         "  }\n"
+        "  // expose so the utility selector can trigger re-render after changes\n"
+        "  window.__renderTopRates = render;\n"
         "  var KEY = 'gAndETicker_top_rates_term_' + (document.body.getAttribute('data-dashboard') || 'x');\n"
         "  var saved = localStorage.getItem(KEY);\n"
         "  if (saved && [].some.call(sel.options, function(o) { return o.value === saved; })) {\n"
@@ -708,7 +747,7 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
             
             const premiumLabel = data.premium_pct <= 0 ? 'At the low' : `+${{data.premium_pct}}% above low`;
             html += `
-                <div class="stat-card" style="border-left: 4px solid ${{data.color}}; text-align: left;">
+                <div class="stat-card" data-utility="${{util}}" style="border-left: 4px solid ${{data.color}}; text-align: left;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                         <span class="stat-label">${{util}}</span>
                         <span style="font-size: 0.8em; font-weight: 800; color: ${{data.color}};">${{data.icon}} ${{data.status}}</span>
@@ -824,6 +863,87 @@ body {
 .tab:hover { background: var(--bg); color: var(--text); }
 .tab-active { background: var(--text); color: white; }
 
+.selection-section {
+  background: white; border-bottom: 1px solid var(--border);
+  margin-top: -40px; margin-bottom: 24px;
+  position: relative; z-index: 5;
+}
+.selection-inner {
+  max-width: 1100px; margin: 0 auto; padding: 28px 24px;
+}
+.selection-header h2 {
+  margin: 0 0 8px 0; font-size: 1.5em; font-weight: 800; letter-spacing: -0.02em;
+}
+.selection-explainer {
+  margin: 0 0 24px 0; color: var(--muted); font-size: 0.9em; line-height: 1.55;
+  max-width: 780px;
+}
+.selection-explainer strong { color: var(--text); font-weight: 700; }
+.selection-block {
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 14px; padding: 20px 22px;
+  box-shadow: var(--shadow-sm);
+}
+.selection-field-row {
+  display: flex; flex-direction: column; gap: 8px;
+  margin-bottom: 16px;
+}
+.selection-field-row:last-of-type { margin-bottom: 0; }
+.selection-label {
+  font-size: 0.7em; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--muted); font-weight: 700;
+}
+.selection-field-state select {
+  padding: 8px 12px; border: 1.5px solid var(--border);
+  border-radius: 8px; font-size: 0.95em; font-weight: 600;
+  background: white; color: var(--text); cursor: pointer;
+  min-width: 180px; max-width: 220px;
+}
+.utility-buttons {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px; margin-top: 4px;
+}
+.util-btn {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; padding: 14px 16px; background: white;
+  border: 1.5px solid var(--border); border-radius: 10px;
+  cursor: pointer; font-family: inherit; font-size: 0.95em;
+  font-weight: 600; color: var(--text); text-align: left;
+  transition: all 0.15s; width: 100%;
+}
+.util-btn:hover {
+  border-color: var(--primary); background: #eff6ff;
+  transform: translateY(-1px); box-shadow: var(--shadow-sm);
+}
+.util-btn.util-btn-active {
+  border-color: var(--primary); background: #1e40af;
+  color: white;
+}
+.util-btn.util-btn-active .util-btn-check { color: white; }
+.util-btn-check {
+  font-size: 1.1em; color: var(--primary); opacity: 0;
+}
+.util-btn.util-btn-active .util-btn-check { opacity: 1; }
+.util-btn-all {
+  background: #f1f5f9; border-style: dashed;
+  grid-column: 1 / -1;
+}
+.util-btn-all:hover { border-style: solid; }
+.selection-hint {
+  margin: 16px 0 0 0; color: var(--muted); font-size: 0.85em;
+  font-style: italic;
+}
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px;
+  overflow: hidden; clip: rect(0,0,0,0);
+}
+@media (max-width: 640px) {
+  .selection-section { margin-top: -24px; }
+  .selection-inner { padding: 20px 16px; }
+  .selection-header h2 { font-size: 1.25em; }
+  .utility-buttons { grid-template-columns: 1fr; }
+}
+
 .hero {
   background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
   color: white; padding: 60px 24px; text-align: center;
@@ -855,10 +975,15 @@ body {
   margin-bottom: 24px; box-shadow: var(--shadow-sm);
 }
 .section-title {
-  margin: 40px 0 16px;
-  font-size: 0.85em; font-weight: 700;
-  text-transform: uppercase; letter-spacing: 0.1em;
-  color: var(--muted);
+  margin: 40px 0 8px;
+  font-size: 1.4em; font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+.section-subtitle {
+  margin: 0 0 20px;
+  color: var(--muted); font-size: 0.9em;
+  max-width: 780px; line-height: 1.5;
 }
 .leaderboard-cards {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
@@ -1213,14 +1338,44 @@ body {
     </script>
     <nav class="topnav">
     <div class="topnav-inner">
-    <span class="brand">Ohio Energy Tracker</span>
+    <span class="brand"><a href="index.html" style="color:inherit;text-decoration:none;">Ohio Energy Tracker</a></span>
     <div class="tabs">
-    <a href="electric_dashboard.html" class="tab {elec_active}">Electric</a>
-    <a href="gas_dashboard.html" class="tab {gas_active}">Gas</a>
+    <a href="electric_dashboard.html" class="tab {elec_active}" data-tab="electric">Electric</a>
+    <a href="gas_dashboard.html" class="tab {gas_active}" data-tab="gas">Gas</a>
     </div>
     </div>
     </nav>
     {hero_section}
+    <section class="selection-section" id="selection-bar">
+      <div class="selection-inner">
+        <div class="selection-header">
+          <h2>Who delivers your {dash_type}?</h2>
+          <p class="selection-explainer">
+            Your <strong>utility company</strong> (also called the <strong>delivery company</strong>) is who runs the
+            wires or pipes down your street and reads your meter — they're responsible for the lines, outages, and getting
+            power to your home. <strong>They don't have to generate the power</strong>: Ohio lets you pick a different
+            supplier for the actual energy, which is where you can save money. Pick yours below to see rates tailored to your area.
+          </p>
+        </div>
+
+        <div class="selection-block">
+          <div class="selection-field-row">
+            <label class="selection-field selection-field-state">
+              <span class="selection-label">State</span>
+              <select id="state-select">
+                <option value="OH">Ohio</option>
+              </select>
+            </label>
+          </div>
+          <div class="selection-field-row">
+            <span class="selection-label">Your utility / delivery company</span>
+            <div class="utility-buttons" id="utility-buttons"></div>
+            <select id="utility-select" data-fuel="{dash_type}" class="visually-hidden"></select>
+          </div>
+          <p class="selection-hint" id="selection-hint"></p>
+        </div>
+      </div>
+    </section>
     <main class="container">
     <p style="margin-top: -24px; margin-bottom: 32px; font-size: 0.85em; font-style: italic; color: #94a3b8; text-align: center;">
     * This is a free open-source project. Rates are automated and may contain errors. Always verify data on official provider websites.
@@ -1228,7 +1383,8 @@ body {
     {top_rates_section_html}
     {market_pulse_html}
     {calculator_html}
-    <h2 class="section-title">Market Leaderboard</h2>
+    <h2 class="section-title">Available Plans by Delivery Utility</h2>
+    <p class="section-subtitle">Every supplier currently offering plans through each Ohio delivery utility, sorted by contract length. The lowest rate per term is highlighted.</p>
     <div class="leaderboard-cards">
     {"".join(table_sections)}
     </div>
@@ -1264,6 +1420,149 @@ body {
     {chart_switcher_js}
     {weather_js}
     {pulse_js}
+    <script>
+    (function() {{
+      var STORAGE_KEY = 'oet_selection_v1';
+      var FUEL = document.body.getAttribute('data-dashboard') || 'electric';
+
+      var UTILITIES = {{
+        electric: [
+          {{ value: 'AEP', label: 'AEP Ohio' }},
+          {{ value: 'AES Power', label: 'AES Ohio (formerly DP&L)' }},
+          {{ value: 'Duke', label: 'Duke Energy' }},
+          {{ value: 'Ohio Edison', label: 'Ohio Edison' }},
+          {{ value: 'Ilumminating Co', label: 'The Illuminating Co' }},
+          {{ value: 'Toledo Edison', label: 'Toledo Edison' }}
+        ],
+        gas: [
+          {{ value: 'Enbridge-Dominion', label: 'Enbridge (Dominion East Ohio)' }},
+          {{ value: 'Columbia', label: 'Columbia Gas of Ohio' }},
+          {{ value: 'Duke', label: 'Duke Energy' }},
+          {{ value: 'Centerpoint', label: 'CenterPoint Energy' }}
+        ]
+      }};
+
+      function loadSelection() {{
+        try {{ return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{{}}'); }}
+        catch (e) {{ return {{}}; }}
+      }}
+      function saveSelection(sel) {{
+        try {{ localStorage.setItem(STORAGE_KEY, JSON.stringify(sel)); }} catch (e) {{}}
+      }}
+
+      // Populate utility buttons + hidden select for this fuel
+      var utilSel = document.getElementById('utility-select');
+      var utilButtons = document.getElementById('utility-buttons');
+      var stateSel = document.getElementById('state-select');
+      var hint = document.getElementById('selection-hint');
+
+      var opts = '<option value="">— Pick yours —</option>';
+      var btnHtml = '';
+      UTILITIES[FUEL].forEach(function(u) {{
+        opts += '<option value="' + u.value + '">' + u.label + '</option>';
+        btnHtml += '<button type="button" class="util-btn" data-value="' + u.value + '">' +
+                     '<span>' + u.label + '</span>' +
+                     '<span class="util-btn-check">✓</span>' +
+                   '</button>';
+      }});
+      opts += '<option value="all">Show all ' + FUEL + ' options in Ohio</option>';
+      btnHtml += '<button type="button" class="util-btn util-btn-all" data-value="all">' +
+                   '<span>Show all ' + FUEL + ' options in Ohio</span>' +
+                   '<span class="util-btn-check">✓</span>' +
+                 '</button>';
+      utilSel.innerHTML = opts;
+      utilButtons.innerHTML = btnHtml;
+
+      // Load saved selection
+      var saved = loadSelection();
+      if (saved.state) stateSel.value = saved.state;
+      var savedUtil = (saved.utilities && saved.utilities[FUEL]) || '';
+      if (savedUtil) utilSel.value = savedUtil;
+
+      function updateActiveButton(value) {{
+        utilButtons.querySelectorAll('.util-btn').forEach(function(b) {{
+          b.classList.toggle('util-btn-active', b.dataset.value === value);
+        }});
+      }}
+      updateActiveButton(utilSel.value);
+
+      function applyFilter(utility) {{
+        // Reset: show everything
+        document.querySelectorAll('[data-utility]').forEach(function(el) {{
+          el.style.display = '';
+        }});
+
+        if (!utility) {{
+          hint.textContent = '';
+          return;
+        }}
+        if (utility === 'all') {{
+          hint.textContent = 'Showing all utilities';
+          return;
+        }}
+
+        // Hide non-matching elements
+        document.querySelectorAll('[data-utility]').forEach(function(el) {{
+          if (el.dataset.utility !== utility) {{
+            el.style.display = 'none';
+          }}
+        }});
+        hint.textContent = 'Filtered to your utility';
+
+        // Pre-select calculator utility dropdown
+        var calcSel = document.getElementById('calc-utility');
+        if (calcSel) {{
+          for (var i = 0; i < calcSel.options.length; i++) {{
+            if (calcSel.options[i].value === utility) {{
+              calcSel.value = utility;
+              calcSel.dispatchEvent(new Event('change'));
+              break;
+            }}
+          }}
+        }}
+      }}
+
+      applyFilter(utilSel.value);
+
+      // Async-rendered sections (pulse cards, top-rates rows) need re-filter after they mount
+      function filterDynamic() {{
+        var u = utilSel.value;
+        if (!u || u === 'all') return;
+        document.querySelectorAll('[data-utility]').forEach(function(el) {{
+          if (el.dataset.utility !== u) el.style.display = 'none';
+        }});
+      }}
+      ['market-pulse-grid'].forEach(function(id) {{
+        var node = document.getElementById(id);
+        if (node) new MutationObserver(filterDynamic).observe(node, {{ childList: true }});
+      }});
+
+      // Save + apply on change
+      utilSel.addEventListener('change', function() {{
+        var sel = loadSelection();
+        sel.state = stateSel.value || 'OH';
+        sel.utilities = sel.utilities || {{}};
+        sel.utilities[FUEL] = utilSel.value;
+        saveSelection(sel);
+        applyFilter(utilSel.value);
+        updateActiveButton(utilSel.value);
+        // Top Rates table re-renders from the per-utility bucket
+        if (typeof window.__renderTopRates === 'function') window.__renderTopRates();
+      }});
+
+      utilButtons.addEventListener('click', function(e) {{
+        var btn = e.target.closest('.util-btn');
+        if (!btn) return;
+        utilSel.value = btn.dataset.value;
+        utilSel.dispatchEvent(new Event('change'));
+      }});
+      stateSel.addEventListener('change', function() {{
+        var sel = loadSelection();
+        sel.state = stateSel.value;
+        saveSelection(sel);
+      }});
+    }})();
+    </script>
     </body>
     </html>
     """
