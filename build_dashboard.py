@@ -29,9 +29,13 @@ def fig_to_html_no_bdata(fig):
                 return arr.tolist()
             return {k: decode_plotly_bdata(v) for k, v in obj.items()}
         elif isinstance(obj, list):
-            return [decode_plotly_bdata(x) for x in obj]
+            if len(obj) > 0 and isinstance(obj[0], (dict, list, tuple)):
+                return [decode_plotly_bdata(x) for x in obj]
+            return obj
         elif isinstance(obj, tuple):
-            return [decode_plotly_bdata(x) for x in obj]
+            if len(obj) > 0 and isinstance(obj[0], (dict, list, tuple)):
+                return [decode_plotly_bdata(x) for x in obj]
+            return list(obj)
         elif isinstance(obj, np.ndarray):
             return obj.tolist()
         elif isinstance(obj, (np.float64, np.float32)):
@@ -104,25 +108,34 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
     allowed_terms = [6, 9, 12, 18, 24, 30, 36]
     min_rates_hist = min_rates_hist[min_rates_hist['Term. Length'].isin(allowed_terms)].copy()
 
-    # Reindex to insert NaNs for any missing dates (gaps in data)
+    # Insert NaNs to break lines only for gaps > 30 days
     if not min_rates_hist.empty:
-        all_dates = pd.date_range(
-            start=min_rates_hist['Date'].min(),
-            end=min_rates_hist['Date'].max(),
-            freq='D'
-        )
-        utilities = min_rates_hist['Utility'].unique()
-        terms = min_rates_hist['Term. Length'].unique()
-        
-        idx = pd.MultiIndex.from_product(
-            [utilities, terms, all_dates],
-            names=['Utility', 'Term. Length', 'Date']
-        )
-        min_rates_hist = min_rates_hist.set_index(['Utility', 'Term. Length', 'Date']).reindex(idx).reset_index()
+        min_rates_hist = min_rates_hist.sort_values(by=['Utility', 'Term. Length', 'Date']).reset_index(drop=True)
+        max_gap = pd.Timedelta(days=30)
+        new_rows = []
+        for keys, group in min_rates_hist.groupby(['Utility', 'Term. Length']):
+            group = group.sort_values('Date')
+            if len(group) < 2:
+                continue
+            diffs = group['Date'].diff()
+            gap_indices = diffs[diffs > max_gap].index
+            for idx in gap_indices:
+                prev_row = group.loc[idx - 1]
+                nan_date = prev_row['Date'] + pd.Timedelta(days=1)
+                new_rows.append({
+                    'Utility': keys[0],
+                    'Term. Length': keys[1],
+                    'Date': nan_date,
+                    'rate': None
+                })
+        if new_rows:
+            nan_df = pd.DataFrame(new_rows)
+            min_rates_hist = pd.concat([min_rates_hist, nan_df], ignore_index=True)
+
 
     # Sort values and convert Date to clean string date representation for Plotly JS
     min_rates_hist = min_rates_hist.sort_values(by=['Utility', 'Term. Length', 'Date'])
-    min_rates_hist['Date'] = min_rates_hist['Date'].dt.strftime('%Y-%m-%d')
+    min_rates_hist['Date'] = min_rates_hist['Date'].dt.date.astype(str)
 
     y_min, y_max = min_rates_hist['rate'].min(), min_rates_hist['rate'].max()
     y_padding = (y_max - y_min) * 0.05
@@ -191,7 +204,7 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
     # 2. Generate individual utility charts and construct dropdown list
     utilities = sorted(min_rates_hist['Utility'].dropna().unique())
     select_options = ['<option value="all">All Providers</option>']
-    graphs_html_list = [f'<div id="graph-all" class="graph-container" data-provider="all">{graph_all_html}</div>']
+    graphs_html_list = [f'<div id="graph-all" class="graph-container" data-provider="all" style="height: {dynamic_height}px;">{graph_all_html}</div>']
 
     for util in utilities:
         safe_util_id = "".join([c if c.isalnum() else "_" for c in util])
@@ -220,7 +233,7 @@ def generate_energy_dashboard(file_path, html_file_name, elecHtml, top_link_url,
             margin=dict(t=80, b=50)
         )
         util_graph_html = fig_to_html_no_bdata(fig_util)
-        graphs_html_list.append(f'<div id="graph-{safe_util_id}" class="graph-container" data-provider="{safe_util_id}" style="display: none;">{util_graph_html}</div>')
+        graphs_html_list.append(f'<div id="graph-{safe_util_id}" class="graph-container" data-provider="{safe_util_id}" style="display: none; height: 500px;">{util_graph_html}</div>')
 
     select_html = "".join(select_options)
     graphs_html = "".join(graphs_html_list)
